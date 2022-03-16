@@ -5,17 +5,6 @@
 
 #include "Image.h"
 
-// Filter: Dont care
-#define F_DC 2
-// Filter: center
-#define F_M 3
-// Filter: A
-#define F_A 4
-// Filter: B
-#define F_B 5
-// Filter: C
-#define F_C 6
-
 class Filter
 {
 public:
@@ -36,9 +25,10 @@ public:
     // Print the contents of the filter to console
     void Print() const;
 
-    // Applies the filter on the specified center pixel of the given image, returns true if matches, false otherwise
-    bool Match01(const Image &image, const int32_t row, const int32_t column, const size_t channel, const BoundaryExtension &boundaryExtension) const;
-    bool Match(const Image &image, const int32_t row, const int32_t column, const size_t channel = 0, const BoundaryExtension &boundaryExtension = BoundaryExtension::Zero) const;
+    // Applies the filter on the specified center pixel of the given image
+    double Apply(const Image &image, const int32_t v, const int32_t u, const size_t channel = 0, const BoundaryExtension &boundaryExtension = BoundaryExtension::Replication) const;
+    // Applies the filter on the entire image
+    Image Convolve(const Image &image, const BoundaryExtension &boundaryExtension = BoundaryExtension::Replication) const;
 };
 
 #endif // FILTER_H

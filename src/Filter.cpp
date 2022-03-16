@@ -74,88 +74,30 @@ void Filter::Print() const
     }
 }
 
-// Applies the filter on the specified center pixel of the given image, returns true if matches, false otherwise
-bool Filter::Match01(const Image &image, const int32_t row, const int32_t column, const size_t channel, const BoundaryExtension &boundaryExtension) const
+
+// Applies the filter on the specified center pixel of the given image
+double Filter::Apply(const Image &image, const int32_t v, const int32_t u, const size_t channel, const BoundaryExtension &boundaryExtension) const
 {
     const int32_t centerIndex = size / 2;
+    double sum = 0.0;
 
     for (int32_t dv = -centerIndex; dv <= centerIndex; dv++)
         for (int32_t du = -centerIndex; du <= centerIndex; du++)
-        {
-            const int32_t filterCase = data[centerIndex + dv][centerIndex + du];
-            const uint8_t intensity = image.GetPixelValue(row + dv, column + du, channel, boundaryExtension); // [0, 255]
+            sum += data[centerIndex + dv][centerIndex + du] * static_cast<double>(image.GetPixelValue(v + dv, u + du, channel, boundaryExtension));
 
-            switch(filterCase)
-            {
-                case 0:
-                    if (intensity != 0)
-                        return false;
-                    break;
-                case 1:
-                    if (intensity != 255)
-                        return false;
-                    break;
-                default:
-                    std::cout << "Invalid filter case used: " << filterCase << std::endl;
-                    break;
-            }
-        }
-
-    return true;
+    return sum;
 }
 
-// Applies the filter on the specified center pixel of the given image, returns true if matches, false otherwise
-bool Filter::Match(const Image &image, const int32_t row, const int32_t column, const size_t channel, const BoundaryExtension &boundaryExtension) const
+// Applies the filter on the entire image
+Image Filter::Convolve(const Image &image, const BoundaryExtension &boundaryExtension) const
 {
-    const int32_t centerIndex = size / 2;
-    const int32_t centerIntensity = image.GetPixelValue(row, column, channel, boundaryExtension); // [0, 255]
+    Image result(image.width, image.height, image.channels);
 
-    // Used to compute if ABC constraint is met, if any
-    uint32_t unionABCValue = 0;
-    bool hasABC = false;
+    // Convolve across the image, using reflection padding
+    for (int32_t v = 0; v < result.height; v++)
+        for (int32_t u = 0; u < result.width; u++)
+            for (size_t c = 0; c < result.channels; c++)
+                result(v, u, c) = Saturate(Apply(image, u, v, c, boundaryExtension));
 
-    for (int32_t dv = -centerIndex; dv <= centerIndex; dv++)
-        for (int32_t du = -centerIndex; du <= centerIndex; du++)
-        {
-            const int32_t filterCase = data[centerIndex + dv][centerIndex + du];
-            const uint8_t intensity = image.GetPixelValue(row + dv, column + du, channel, boundaryExtension); // [0, 255]
-
-            switch(filterCase)
-            {
-                // Generic 0 case
-                case 0:
-                    if (intensity != 0)
-                        return false;
-                    break;
-                // Generic 1 case
-                case 1:
-                    if (intensity != 255)
-                        return false;
-                    break;
-                // Skip dont cares
-                case F_DC:
-                    break;
-                // Special Case: M, must match center
-                case F_M:
-                    if (intensity != centerIntensity)
-                        return false;
-                    break;
-                // Special Cases: ABC, one must be true atleast
-                case F_A:
-                case F_B:
-                case F_C:
-                    unionABCValue += intensity;
-                    hasABC = true;
-                    break;
-                default:
-                    std::cout << "Invalid filter case used: " << filterCase << std::endl;
-                    break;
-            }
-        }
-
-    // Ensure that A or B or C >= 1 is satisfied
-    if (hasABC && unionABCValue == 0)
-        return false;
-
-    return true;
+    return result;
 }
