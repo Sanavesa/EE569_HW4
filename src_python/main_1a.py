@@ -60,3 +60,20 @@ neighbors = nn.fit(train_x_pca)
 neighbors, indices = neighbors.kneighbors(test_x_pca)
 classification = [train_y[int(i)] for i in indices]
 print("classification", classification)
+
+"""
+1. Blanket	Wrong: Grass
+2. Blanket
+3. Blanket
+4. Brick	Wrong: Stones
+5. Stones
+6. Grass
+7. Brick
+8. Brick	Wrong: Stones
+9. Brick
+10. Brick
+11. Brick	Wrong: Blanket
+12. Grass
+
+Accuracy: 8/12
+"""

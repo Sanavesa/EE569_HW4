@@ -109,7 +109,7 @@ Image<double> CalculateFeatureVectors(const std::string &directory, const std::v
         for (size_t filterIndex = 0; filterIndex < numFilters; filterIndex++)
         {
             const Filter filter = lawFilters[filterIndex];
-            const Image<double> filterResponse = filter.Convolve(input01Image);
+            const Image<double> filterResponse = filter.Convolve(input01Image, BoundaryExtension::Reflection);
             const Image<double> energy = filterResponse.Power(2);
             const double mean = energy.Mean();
             featureVectors(sampleIndex, filterIndex, 0) = mean;

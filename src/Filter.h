@@ -52,7 +52,7 @@ public:
         for (int32_t v = 0; v < result.height; v++)
             for (int32_t u = 0; u < result.width; u++)
                 for (size_t c = 0; c < result.channels; c++)
-                    result(v, u, c) = Apply(image, u, v, c, boundaryExtension);
+                    result(v, u, c) = Apply(image, v, u, c, boundaryExtension);
 
         return result;
     }

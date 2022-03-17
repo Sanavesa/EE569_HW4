@@ -344,7 +344,7 @@ public:
         {
             for (size_t u = 0; u < width; u++)
                 for (size_t c = 0; c < channels; c++)
-                    std::cout << data[v][u][c] << "\t";
+                    std::cout << std::to_string(data[v][u][c]) << "\t";
             std::cout << std::endl;
         }
     }
