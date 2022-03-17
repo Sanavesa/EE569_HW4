@@ -4,13 +4,14 @@
 #define IMPLEMENTATIONS_H
 
 #include <iostream>
+#include <vector>
 
 #include "Image.h"
 #include "Utility.h"
 #include "Filter.h"
 
 // 25 Law Filters that are 5x5 in order: L5, E5, S5, W5, R5
-const Filter lawFilters[25] =
+const std::vector<Filter> lawFilters =
 {
     // 0: L5.T L5
     Filter(5, {1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1}),
@@ -88,8 +89,38 @@ const Filter lawFilters[25] =
     Filter(5, {1, -4, 6, -4, 1, -4, 16, -24, 16, -4, 6, -24, 36, -24, 6, -4, 16, -24, 16, -4, 1, -4, 6, -4, 1}),
 };
 
+// Generate feature vectors for each image (n_samples, n_features) = (36 rows, 25 columns) for training, and (12 rows, 25 columns) for testing
+Image<double> CalculateFeatureVectors(const std::string &directory, const std::vector<std::string> &filenames, const size_t width, const size_t height, const size_t channels)
+{
+    const size_t numFilters = lawFilters.size();
+    const size_t numImages = filenames.size();
+
+    Image<double> featureVectors(numFilters, numImages, 1);
+    for (size_t sampleIndex = 0; sampleIndex < numImages; sampleIndex++)
+    {
+        // Load input image
+        Image<uint8_t> inputImage(width, height, channels);
+        if (!inputImage.ImportRAW(directory + filenames[sampleIndex]))
+            exit(-1);
+
+        std::cout << "Loaded " << filenames[sampleIndex] << std::endl;
+
+        const Image<double> input01Image = inputImage.Cast<double>() / 255.0;
+        for (size_t filterIndex = 0; filterIndex < numFilters; filterIndex++)
+        {
+            const Filter filter = lawFilters[filterIndex];
+            const Image<double> filterResponse = filter.Convolve(input01Image);
+            const Image<double> energy = filterResponse.Power(2);
+            const double mean = energy.Mean();
+            featureVectors(sampleIndex, filterIndex, 0) = mean;
+        }
+    }
+
+    return featureVectors;
+}
+
 // Calculates the discriminant power for each dimension (featureVectors shape: 25 columns, 36 rows, 1 channel)
-void CalculateDiscriminantPower(const Image<double> featureVectors)
+void CalculateDiscriminantPower(const Image<double> &featureVectors)
 {
     constexpr size_t numClasses = 4;
     constexpr size_t numObserverationsPerClass = 9;

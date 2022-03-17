@@ -5,6 +5,7 @@
 #include <string>
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 #include "Image.h"
 #include "Implementations.h"
 
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
 	const size_t height = (size_t)atoi(argv[4]);
 	const size_t channels = (size_t)atoi(argv[5]);
 
-    const std::string trainFilenames[36] =
+    const std::vector<std::string> trainFilenames =
     {
         "blanket_1.raw",
         "blanket_2.raw",
@@ -67,59 +68,85 @@ int main(int argc, char *argv[])
         "stones_9.raw",
     };
 
-    // Generate feature vectors for each image (n_samples, n_features) = (36 rows, 25 columns)
-    Image<double> featureVectors(25, 36, 1);
-    for (size_t sampleIndex = 0; sampleIndex < 36; sampleIndex++)
+    const std::vector<std::string> testFilenames =
     {
-        // Load input image
-        Image<uint8_t> inputImage(width, height, channels);
-        if (!inputImage.ImportRAW(trainDirectory + trainFilenames[sampleIndex]))
-            return -1;
+        "1.raw",
+        "2.raw",
+        "3.raw",
+        "4.raw",
+        "5.raw",
+        "6.raw",
+        "7.raw",
+        "8.raw",
+        "9.raw",
+        "10.raw",
+        "11.raw",
+        "12.raw",
+    };
 
-        std::cout << "Loaded " << trainFilenames[sampleIndex] << std::endl;
+    // --- Training Dataset
 
-        const Image<double> input01Image = inputImage.Cast<double>() / 255.0;
-        for (size_t filterIndex = 0; filterIndex < 25; filterIndex++)
-        {
-            const Filter filter = lawFilters[filterIndex];
-            const Image<double> filterResponse = filter.Convolve(input01Image);
-            const Image<double> energy = filterResponse.Power(2);
-            const double mean = energy.Mean();
-            featureVectors(sampleIndex, filterIndex, 0) = mean;
-        }
-    }
+    const Image<double> trainFeatures = CalculateFeatureVectors(trainDirectory, trainFilenames, width, height, channels);
 
     // Export to CSV
-    std::ofstream outStream("features.csv", std::ofstream::trunc);
+    std::ofstream outStreamTrain("train_features.csv", std::ofstream::trunc);
 
     // Check if file opened successfully
-    if (!outStream.is_open())
+    if (!outStreamTrain.is_open())
     {
-        std::cout << "Cannot open file for writing: features.csv" << std::endl;
+        std::cout << "Cannot open file for writing: train_features.csv" << std::endl;
         return false;
     }
 
     // Write to the file: row-by-row, RGB interleaved
-    for (size_t v = 0; v < featureVectors.height; v++)
+    for (size_t v = 0; v < trainFeatures.height; v++)
     {
         if (v < 9)
-            outStream << "blanket,";
+            outStreamTrain << "blanket,";
         else if (v < 18)
-            outStream << "brick,";
+            outStreamTrain << "brick,";
         else if (v < 27)
-            outStream << "grass,";
+            outStreamTrain << "grass,";
         else
-            outStream << "stones,";
+            outStreamTrain << "stones,";
         
-        for (size_t u = 0; u < featureVectors.width; u++)
-            for (size_t c = 0; c < featureVectors.channels; c++)
-                outStream << featureVectors(v, u, c) << ",";
-        outStream << std::endl;
+        for (size_t u = 0; u < trainFeatures.width; u++)
+            for (size_t c = 0; c < trainFeatures.channels; c++)
+                outStreamTrain << trainFeatures(v, u, c) << ",";
+        outStreamTrain << std::endl;
     }
 
-    outStream.close();
+    outStreamTrain.close();
 
-    CalculateDiscriminantPower(featureVectors);
+    // Display discriminant power of training
+    CalculateDiscriminantPower(trainFeatures);
+
+    // --- Testing Dataset
+
+    Image<double> testFeatures = CalculateFeatureVectors(testDirectory, testFilenames, width, height, channels);
+
+    // Export to CSV
+    std::ofstream outStreamTest("test_features.csv", std::ofstream::trunc);
+
+    // Check if file opened successfully
+    if (!outStreamTest.is_open())
+    {
+        std::cout << "Cannot open file for writing: test_features.csv" << std::endl;
+        return false;
+    }
+
+    // Write to the file: row-by-row, RGB interleaved
+    for (size_t v = 0; v < testFeatures.height; v++)
+    {
+        outStreamTest << "unlabeled,";
+
+        for (size_t u = 0; u < testFeatures.width; u++)
+            for (size_t c = 0; c < testFeatures.channels; c++)
+                outStreamTest << testFeatures(v, u, c) << ",";
+        outStreamTest << std::endl;
+    }
+
+    outStreamTest.close();
 
     std::cout << "Done" << std::endl;
     return 0;
