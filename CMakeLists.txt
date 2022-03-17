@@ -11,7 +11,7 @@ enable_testing()
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-add_executable(EE569_HW4 src/main.cpp src/Image.h src/Image.cpp src/Utility.h src/Utility.cpp src/Implementations.h src/Filter.h src/Filter.cpp)
+add_executable(EE569_HW4 src/main.cpp src/Image.h src/Utility.h src/Utility.cpp src/Implementations.h src/Filter.h src/Filter.cpp)
 
 include_directories(SYSTEM ./src)
 

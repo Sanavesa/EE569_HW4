@@ -12,81 +12,140 @@
 // 25 Law Filters that are 5x5 in order: L5, E5, S5, W5, R5
 const Filter lawFilters[25] =
 {
-    // L5.T L5
+    // 0: L5.T L5
     Filter(5, {1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1}),
 
-    // L5.T E5
+    // 1: L5.T E5
     Filter(5, {-1, -2, 0, 2, 1, -4, -8, 0, 8, 4, -6, -12, 0, 12, 6, -4, -8, 0, 8, 4, -1, -2, 0, 2, 1}),
 
-    // L5.T S5
+    // 2: L5.T S5
     Filter(5, {-1, 0, 2, 0, -1, -4, 0, 8, 0, -4, -6, 0, 12, 0, -6, -4, 0, 8, 0, -4, -1, 0, 2, 0, -1}),
 
-    // L5.T W5
+    // 3: L5.T W5
     Filter(5, {-1, 2, 0, -2, 1, -4, 8, 0, -8, 4, -6, 12, 0, -12, 6, -4, 8, 0, -8, 4, -1, 2, 0, -2, 1}),
 
-    // L5.T R5
+    // 4: L5.T R5
     Filter(5, {1, -4, 6, -4, 1, 4, -16, 24, -16, 4, 6, -24, 36, -24, 6, 4, -16, 24, -16, 4, 1, -4, 6, -4, 1}),
 
-    // E5.T L5
+    // 5: E5.T L5
     Filter(5, {-1, -4, -6, -4, -1, -2, -8, -12, -8, -2, 0, 0, 0, 0, 0, 2, 8, 12, 8, 2, 1, 4, 6, 4, 1}),
 
-    // E5.T E5
+    // 6: E5.T E5
     Filter(5, {1, 2, 0, -2, -1, 2, 4, 0, -4, -2, 0, 0, 0, 0, 0, -2, -4, 0, 4, 2, -1, -2, 0, 2, 1}),
 
-    // E5.T S5
+    // 7: E5.T S5
     Filter(5, {1, 0, -2, 0, 1, 2, 0, -4, 0, 2, 0, 0, 0, 0, 0, -2, 0, 4, 0, -2, -1, 0, 2, 0, -1}),
 
-    // E5.T W5
+    // 8: E5.T W5
     Filter(5, {1, -2, 0, 2, -1, 2, -4, 0, 4, -2, 0, 0, 0, 0, 0, -2, 4, 0, -4, 2, -1, 2, 0, -2, 1}),
 
-    // E5.T R5
+    // 9: E5.T R5
     Filter(5, {-1, 4, -6, 4, -1, -2, 8, -12, 8, -2, 0, 0, 0, 0, 0, 2, -8, 12, -8, 2, 1, -4, 6, -4, 1}),
 
-    // S5.T L5
+    // 10: S5.T L5
     Filter(5, {-1, -4, -6, -4, -1, 0, 0, 0, 0, 0, 2, 8, 12, 8, 2, 0, 0, 0, 0, 0, -1, -4, -6, -4, -1}),
 
-    // S5.T E5
+    // 11: S5.T E5
     Filter(5, {1, 2, 0, -2, -1, 0, 0, 0, 0, 0, -2, -4, 0, 4, 2, 0, 0, 0, 0, 0, 1, 2, 0, -2, -1}),
 
-    // S5.T S5
+    // 12: S5.T S5
     Filter(5, {1, 0, -2, 0, 1, 0, 0, 0, 0, 0, -2, 0, 4, 0, -2, 0, 0, 0, 0, 0, 1, 0, -2, 0, 1}),
 
-    // S5.T W5
+    // 13: S5.T W5
     Filter(5, {1, -2, 0, 2, -1, 0, 0, 0, 0, 0, -2, 4, 0, -4, 2, 0, 0, 0, 0, 0, 1, -2, 0, 2, -1}),
 
-    // S5.T R5
+    // 14: S5.T R5
     Filter(5, {-1, 4, -6, 4, -1, 0, 0, 0, 0, 0, 2, -8, 12, -8, 2, 0, 0, 0, 0, 0, -1, 4, -6, 4, -1}),
 
-    // W5.T L5
+    // 15: W5.T L5
     Filter(5, {-1, -4, -6, -4, -1, 2, 8, 12, 8, 2, 0, 0, 0, 0, 0, -2, -8, -12, -8, -2, 1, 4, 6, 4, 1}),
 
-    // W5.T E5
+    // 16: W5.T E5
     Filter(5, {1, 2, 0, -2, -1, -2, -4, 0, 4, 2, 0, 0, 0, 0, 0, 2, 4, 0, -4, -2, -1, -2, 0, 2, 1}),
 
-    // W5.T S5
+    // 17: W5.T S5
     Filter(5, {1, 0, -2, 0, 1, -2, 0, 4, 0, -2, 0, 0, 0, 0, 0, 2, 0, -4, 0, 2, -1, 0, 2, 0, -1}),
 
-    // W5.T W5
+    // 18: W5.T W5
     Filter(5, {1, -2, 0, 2, -1, -2, 4, 0, -4, 2, 0, 0, 0, 0, 0, 2, -4, 0, 4, -2, -1, 2, 0, -2, 1}),
 
-    // W5.T R5
+    // 19: W5.T R5
     Filter(5, {-1, 4, -6, 4, -1, 2, -8, 12, -8, 2, 0, 0, 0, 0, 0, -2, 8, -12, 8, -2, 1, -4, 6, -4, 1}),
 
-    // R5.T L5
+    // 20: R5.T L5
     Filter(5, {1, 4, 6, 4, 1, -4, -16, -24, -16, -4, 6, 24, 36, 24, 6, -4, -16, -24, -16, -4, 1, 4, 6, 4, 1}),
 
-    // R5.T E5
+    // 21: R5.T E5
     Filter(5, {-1, -2, 0, 2, 1, 4, 8, 0, -8, -4, -6, -12, 0, 12, 6, 4, 8, 0, -8, -4, -1, -2, 0, 2, 1}),
 
-    // R5.T S5
+    // 22: R5.T S5
     Filter(5, {-1, 0, 2, 0, -1, 4, 0, -8, 0, 4, -6, 0, 12, 0, -6, 4, 0, -8, 0, 4, -1, 0, 2, 0, -1}),
 
-    // R5.T W5
+    // 23: R5.T W5
     Filter(5, {-1, 2, 0, -2, 1, 4, -8, 0, 8, -4, -6, 12, 0, -12, 6, 4, -8, 0, 8, -4, -1, 2, 0, -2, 1}),
 
-    // R5.T R5
+    // 24: R5.T R5
     Filter(5, {1, -4, 6, -4, 1, -4, 16, -24, 16, -4, 6, -24, 36, -24, 6, -4, 16, -24, 16, -4, 1, -4, 6, -4, 1}),
 };
 
+// Calculates the discriminant power for each dimension (featureVectors shape: 25 columns, 36 rows, 1 channel)
+void CalculateDiscriminantPower(const Image<double> featureVectors)
+{
+    constexpr size_t numClasses = 4;
+    constexpr size_t numObserverationsPerClass = 9;
+
+    double minDP = 999999999999;
+    size_t minDPIdx = 0;
+    double maxDP = -minDP;
+    size_t maxDPIdx = 0;
+
+    // For each dimension...
+    for (size_t dim = 0; dim < featureVectors.width; dim++)
+    {
+        // Compute overall average
+        double overallAverage = 0.0;
+        for (size_t imageIdx = 0; imageIdx < featureVectors.height; imageIdx++)
+            overallAverage += featureVectors(imageIdx, dim);
+        overallAverage /= featureVectors.height;
+
+        // Compute the average for each class (we have 4 classes)
+        double classAverages[numClasses] = {0};
+        for (size_t imageIdx = 0; imageIdx < featureVectors.height; imageIdx++)
+        {
+            const size_t classIdx = imageIdx / numObserverationsPerClass;
+            classAverages[classIdx] += featureVectors(imageIdx, dim);
+        }
+        for (size_t i = 0; i < 4; i++)
+            classAverages[i] /= numObserverationsPerClass;
+
+        // Compute the intra/inter-class sum of squares
+        double intraclass = 0.0;
+        double interclass = 0.0;
+        for (size_t imageIdx = 0; imageIdx < featureVectors.height; imageIdx++)
+        {
+            const size_t classIdx = imageIdx / numObserverationsPerClass;
+            intraclass += std::pow(featureVectors(imageIdx, dim) - classAverages[classIdx], 2);
+            interclass += std::pow(classAverages[classIdx] - overallAverage, 2);
+        }
+
+        const double discriminantPower = intraclass / interclass;
+        std::cout << "Dim " << dim << "," << discriminantPower << std::endl;
+
+        if (discriminantPower < minDP)
+        {
+            minDP = discriminantPower;
+            minDPIdx = dim;
+        }
+
+        if (discriminantPower > maxDP)
+        {
+            maxDP = discriminantPower;
+            maxDPIdx = dim;
+        }
+    }
+
+    std::cout << "Min " << minDPIdx << " with value " << minDP << std::endl;
+    std::cout << "Max " << maxDPIdx << " with value " << maxDP << std::endl;
+}
 
 #endif // IMPLEMENTATIONS_H

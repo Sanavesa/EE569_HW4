@@ -74,30 +74,12 @@ void Filter::Print() const
     }
 }
 
-
-// Applies the filter on the specified center pixel of the given image
-double Filter::Apply(const Image &image, const int32_t v, const int32_t u, const size_t channel, const BoundaryExtension &boundaryExtension) const
+// Computes the mean of the filter
+double Filter::Mean() const
 {
-    const int32_t centerIndex = size / 2;
-    double sum = 0.0;
-
-    for (int32_t dv = -centerIndex; dv <= centerIndex; dv++)
-        for (int32_t du = -centerIndex; du <= centerIndex; du++)
-            sum += data[centerIndex + dv][centerIndex + du] * static_cast<double>(image.GetPixelValue(v + dv, u + du, channel, boundaryExtension));
-
-    return sum;
-}
-
-// Applies the filter on the entire image
-Image Filter::Convolve(const Image &image, const BoundaryExtension &boundaryExtension) const
-{
-    Image result(image.width, image.height, image.channels);
-
-    // Convolve across the image, using reflection padding
-    for (int32_t v = 0; v < result.height; v++)
-        for (int32_t u = 0; u < result.width; u++)
-            for (size_t c = 0; c < result.channels; c++)
-                result(v, u, c) = Saturate(Apply(image, u, v, c, boundaryExtension));
-
-    return result;
+    double mean = 0.0;
+    for (uint32_t v = 0; v < size; v++)
+        for (uint32_t u = 0; u < size; u++)
+            mean += data[v][u];
+    return mean / (size * size);
 }
