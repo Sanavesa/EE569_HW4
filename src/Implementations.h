@@ -160,7 +160,7 @@ void CalculateDiscriminantPower(const Image<double> &featureVectors)
         }
 
         const double discriminantPower = intraclass / interclass;
-        std::cout << "Dim " << dim << "," << discriminantPower << std::endl;
+        std::cout << "Dimension " << dim << "\n\tDiscriminant Power = " << discriminantPower << "\n\tIntraclass = " << intraclass << "\n\tInterclass = " << interclass << std::endl << std::endl;
 
         if (discriminantPower < minDP)
         {

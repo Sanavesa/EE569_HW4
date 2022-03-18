@@ -55,7 +55,7 @@ plt.title("PCA on Test Dataset")
 plt.show()
 
 # Test Classification using Mahalanobis distance
-nn = NearestNeighbors(n_neighbors=1, algorithm="brute", metric="mahalanobis", metric_params={"VI": np.cov(train_x_pca)})
+nn = NearestNeighbors(n_neighbors=1, algorithm="brute", metric="mahalanobis", metric_params={"VI": np.cov(train_x_pca.T)})
 neighbors = nn.fit(train_x_pca)
 neighbors, indices = neighbors.kneighbors(test_x_pca)
 classification = [train_y[int(i)] for i in indices]
@@ -65,7 +65,7 @@ print("classification", classification)
 1. Blanket	Wrong: Grass
 2. Blanket
 3. Blanket
-4. Brick	Wrong: Stones
+4. Stones
 5. Stones
 6. Grass
 7. Brick
@@ -75,5 +75,5 @@ print("classification", classification)
 11. Brick	Wrong: Blanket
 12. Grass
 
-Accuracy: 8/12
+Accuracy: 9/12
 """
