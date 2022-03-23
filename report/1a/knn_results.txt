@@ -1,0 +1,13 @@
+1. blanket	Wrong: grass
+2. blanket
+3. blanket
+4. stones
+5. stones
+6. grass
+7. brick
+8. brick	Wrong: stones
+9. brick
+10. brick
+11. stones	Wrong: blanket
+12. grass
+Accuracy: 9/12

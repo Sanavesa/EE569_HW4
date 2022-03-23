@@ -1,4 +1,49 @@
-// .\EE569_HW4.exe images/train/ images/test/ 128 128 1
+/*
+#################################################################################################################
+
+# EE569 Homework Assignment #4
+# Date: March 27, 2022
+# Name: Mohammad Alali
+# ID: 5661-9219-82
+# email: alalim@usc.edu
+
+#################################################################################################################
+
+    CONSOLE APPLICATION : Texture Classification – Feature Extraction
+	
+#################################################################################################################
+
+This file will load a dataset and convolve the 25 laws filters to get a richer features per image in the dataset.
+Then, it will analyze the discriminant power of each filter and output the 36x25 training matrix to python for PCA
+and nearest neighbor classification. The same is done for the testing dataset.
+
+#################################################################################################################
+
+Arguments:
+    programName trainDirectory testDirectory width height channels
+    *Directory must end with /"
+Example:
+    .\EE569_HW4_Q1a.exe images/train/ images/test/ 128 128 1
+
+########################################### Notes on Arguments ####################################################
+
+1- The file paths can be either relative to the executable or absolute paths.
+2- If 'NoExtension' is on an argument, the image filename SHOULD NOT include an extension like .raw, the program will add that automatically.
+3- All arguments are mandatory, only arguments marked with [varName] have defaults.
+
+############################################### Other Files #######################################################
+
+Image.h, Image.cpp
+	These files contain an abstraction for handling RAW images to simplify programming and for ease of readability.
+
+Utility.h, Utility.cpp
+	These files provide auxiliary helper functions used through the program.
+
+Implementations.h
+	This file contains the concrete implementation of the algorithms required in the assignment.
+
+#################################################################################################################
+*/
 
 #include <iostream>
 #include <fstream>
@@ -85,7 +130,6 @@ int main(int argc, char *argv[])
     };
 
     // --- Training Dataset
-
     const Image<double> trainFeatures = CalculateFeatureVectors(trainDirectory, trainFilenames, width, height, channels);
 
     // Export to CSV
@@ -122,7 +166,6 @@ int main(int argc, char *argv[])
     CalculateDiscriminantPower(trainFeatures);
 
     // --- Testing Dataset
-
     Image<double> testFeatures = CalculateFeatureVectors(testDirectory, testFilenames, width, height, channels);
 
     // Export to CSV

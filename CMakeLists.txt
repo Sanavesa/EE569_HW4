@@ -11,11 +11,11 @@ enable_testing()
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-add_executable(EE569_HW4 src/main.cpp src/Image.h src/Utility.h src/Utility.cpp src/Implementations.h src/Filter.h src/Filter.cpp)
+add_executable(EE569_HW4_Q1a src/main_1a.cpp src/Image.h src/Utility.h src/Utility.cpp src/Implementations.h src/Filter.h src/Filter.cpp)
 
 include_directories(SYSTEM ./src)
 
-target_link_libraries( EE569_HW4 ${OpenCV_LIBS} )
+target_link_libraries( EE569_HW4_Q1a ${OpenCV_LIBS} )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

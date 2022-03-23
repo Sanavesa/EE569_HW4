@@ -1,0 +1,10 @@
+train's eigenvalue #1 27019091.071043402
+train's eigenvalue #2 4516.257233596776
+train's eigenvalue #3 1115.605305551458
+train's trace 27025423.801438436
+train's pca_reconstruction_acc 0.9999740663509652
+test's eigenvalue #1 7899208.588760787
+test's eigenvalue #2 4401.373490998836
+test's eigenvalue #3 667.9759022070625
+test's trace 7906769.110774163
+test's pca_reconstruction_acc 0.999684931659788
