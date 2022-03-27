@@ -20,7 +20,7 @@ and nearest neighbor classification. The same is done for the testing dataset.
 #################################################################################################################
 
 Arguments:
-    programName trainDirectory testDirectory width height channels
+    programName trainDirectory testDirectory height width channels
     *Directory must end with /"
 Example:
     .\EE569_HW4_Q1a.exe images/train/ images/test/ 128 128 1
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     if (argc != 6)
     {
         std::cout << "Syntax Error - Arguments must be:" << std::endl;
-        std::cout << "programName trainDirectory testDirectory width height channels" << std::endl;
+        std::cout << "programName trainDirectory testDirectory height width channels" << std::endl;
         std::cout << "*Directory must end with /" << std::endl;
         return -1;
     }
@@ -69,8 +69,8 @@ int main(int argc, char *argv[])
 	// Parse console arguments
 	const std::string trainDirectory = argv[1];
 	const std::string testDirectory = argv[2];
-	const size_t width = (size_t)atoi(argv[3]);
-	const size_t height = (size_t)atoi(argv[4]);
+	const size_t height = (size_t)atoi(argv[3]);
+	const size_t width = (size_t)atoi(argv[4]);
 	const size_t channels = (size_t)atoi(argv[5]);
 
     const std::vector<std::string> trainFilenames =
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     };
 
     // --- Training Dataset
-    const Image<double> trainFeatures = CalculateFeatureVectors(trainDirectory, trainFilenames, width, height, channels);
+    const Image<double> trainFeatures = CalculateFeatureVectors(trainDirectory, trainFilenames, height, width, channels);
 
     // Export to CSV
     std::ofstream outStreamTrain("train_features.csv", std::ofstream::trunc);
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
     CalculateDiscriminantPower(trainFeatures);
 
     // --- Testing Dataset
-    Image<double> testFeatures = CalculateFeatureVectors(testDirectory, testFilenames, width, height, channels);
+    Image<double> testFeatures = CalculateFeatureVectors(testDirectory, testFilenames, height, width, channels);
 
     // Export to CSV
     std::ofstream outStreamTest("test_features.csv", std::ofstream::trunc);

@@ -11,6 +11,10 @@
 #include <fstream>
 #include "Utility.h"
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
 // Specifies numerous ways to handle out of bound pixels
 enum BoundaryExtension
 {
@@ -28,10 +32,16 @@ template <typename T>
 class Image
 {
 private:
-    // The image data, stored as a 3D array in the format [row][column][channel]
-    T ***data;
+    // Converts 1d to 3d index
+    inline int32_t IndexAt(int32_t row, int32_t column, size_t channel) const
+    {
+        return static_cast<int32_t>((row * channels * width) + (column * channels) + channel);
+    }
 
 public:
+    // The image data, stored as a 3D array in the format [row][column][channel]
+    T *data;
+
     // The width of the image in pixels in the image
     const size_t width;
     // The height of the image in pixels in the image
@@ -42,80 +52,45 @@ public:
     const size_t numPixels;
 
     // Creates a new image with the specified dimensions
-    Image(const size_t _width, const size_t _height, const size_t _channels)
-        : width(_width), height(_height), channels(_channels), numPixels(_width * _height)
+    Image(const size_t _height, const size_t _width, const size_t _channels)
+        : height(_height), width(_width), channels(_channels), numPixels(_height * _width * channels)
     {
-        // Allocate image data array
-        data = new T **[height];
-        for (size_t v = 0; v < height; v++)
-        {
-            data[v] = new T *[width];
-            for (size_t u = 0; u < width; u++)
-                data[v][u] = new T[channels];
-        }
+        data = new T[numPixels];
     }
 
     // Copy constructor
     Image(const Image<T> &other)
-        : width(other.width), height(other.height), channels(other.channels), numPixels(other.numPixels)
+        : height(other.height), width(other.width), channels(other.channels), numPixels(other.numPixels)
     {
-        // Allocate image data array
-        data = new T **[height];
+        data = new T[numPixels];
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] = other.data[i];
+    }
+
+    // Convert cv::Mat to Image (1 channel)
+    Image(const cv::Mat &mat)
+        : height(mat.rows), width(mat.cols), channels(1), numPixels(mat.rows * mat.cols)
+    {
+        data = new T[numPixels];
         for (size_t v = 0; v < height; v++)
-        {
-            data[v] = new T *[width];
             for (size_t u = 0; u < width; u++)
             {
-                data[v][u] = new T[channels];
-                for (size_t c = 0; c < channels; c++)
-                    data[v][u][c] = other.data[v][u][c];
+                uint8_t val = mat.at<uint8_t>(v, u);
+                (*this)(v, u) = static_cast<T>(val);
             }
-        }
     }
 
     // Reads and loads the image in raw format, row-by-row RGB interleaved, from the specified filename
-    Image(const std::string &filename, const size_t _width, const size_t _height, const size_t _channels)
-        : width(_width), height(_height), channels(_channels), numPixels(_width * _height)
+    Image(const std::string &filename, const size_t _height, const size_t _width, const size_t _channels)
+        : height(_height), width(_width), channels(_channels), numPixels(_height * _width * channels)
     {
-        // Allocate image data array
-        data = new uint8_t **[height];
-        for (size_t v = 0; v < height; v++)
-        {
-            data[v] = new uint8_t *[width];
-            for (size_t u = 0; u < width; u++)
-                data[v][u] = new uint8_t[channels];
-        }
-
-        // Open the file
-        std::ifstream inStream(filename, std::ios::binary);
-
-        // Check if file opened successfully
-        if (!inStream.is_open())
-        {
-            std::cout << "Cannot open file for reading: " << filename << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        // Read from the file: row-by-row, RGB interleaved
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                inStream.read((char *)data[v][u], channels);
-
-        inStream.close();
+        data = new uint8_t[numPixels];
+        ImportRAW(filename);
     }
 
     // Frees all dynamically allocated memory resources
     ~Image()
     {
-        // Free image data resources
-        for (size_t v = 0; v < height; v++)
-        {
-            for (size_t u = 0; u < width; u++)
-                delete[] data[v][u];
-
-            delete[] data[v];
-        }
-
         delete[] data;
     }
 
@@ -133,11 +108,9 @@ public:
         }
 
         // Write to the file: row-by-row, RGB interleaved
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                outStream.write((char *)data[v][u], channels);
-
+        outStream.write((char *)data, numPixels);
         outStream.close();
+
         return true;
     }
 
@@ -155,11 +128,9 @@ public:
         }
 
         // Read from the file: row-by-row, RGB interleaved
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                inStream.read((char *)data[v][u], channels);
-
+        inStream.read((char *)data, numPixels);
         inStream.close();
+
         return true;
     }
 
@@ -181,7 +152,7 @@ public:
         {
             for (size_t u = 0; u < width; u++)
                 for (size_t c = 0; c < channels; c++)
-                    outStream << data[v][u][c] << delimeter;
+                    outStream << (int)((*this)(v, u, c)) << delimeter;
             outStream << std::endl;
         }
 
@@ -205,7 +176,10 @@ public:
     {
         // If valid position, get the pixel directly
         if (IsInBounds(row, column, channel))
-            return data[row][column][channel];
+        {
+            const int32_t index = IndexAt(row, column, channel);
+            return data[index];
+        }
         // Otherwise, retrieve the pixel using the specified boundary extension method
         else
         {
@@ -279,7 +253,8 @@ public:
                         v = vExtra % 3;
                 }
 
-                return data[v][u][channel];
+                const int32_t index = IndexAt(v, u, channel);
+                return data[index];
             }
 
             case BoundaryExtension::Reflection:
@@ -296,7 +271,8 @@ public:
                 if (v >= h)
                     v = 2 * (h - 1) - v;
 
-                return data[v][u][channel];
+                const int32_t index = IndexAt(v, u, channel);
+                return data[index];
             }
 
             case BoundaryExtension::Zero:
@@ -309,42 +285,60 @@ public:
     // Retrieves the pixel value at the specified location; does not check for out of bounds
     inline T operator()(const size_t row, const size_t column, const size_t channel = 0) const
     {
-        return data[row][column][channel];
+        const int32_t index = IndexAt(static_cast<int32_t>(row), static_cast<int32_t>(column), channel);
+        return data[index];
     }
 
     // Retrieves the pixel value at the specified location; does not check for out of bounds
     inline T &operator()(const size_t row, const size_t column, const size_t channel = 0)
     {
-        return data[row][column][channel];
+        const int32_t index = IndexAt(static_cast<int32_t>(row), static_cast<int32_t>(column), channel);
+        return data[index];
     }
 
     // Sets the entire image across all channels to the specified value
     void Fill(const T &value)
     {
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    data[v][u][c] = value;
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] = value;
     }
 
     // Copy the other image
     void Copy(const Image<T> &other)
     {
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    data[v][u][c] = other.data[v][u][c];
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] = other.data[i];
+    }
+
+    // // Copy the other image at the specified channels
+    // void Copy(const Image<T> &other, const size_t channel, const size_t otherChannel)
+    // {
+    //     for (size_t v = 0; v < height; v++)
+    //         for (size_t u = 0; u < width; u++)
+    //             data[v][u][channel] = other.data[v][u][otherChannel];
+    // }
+
+    // Elementwise-divide the image by the other image, across all channels separately
+    void ElementwiseDivide(const Image<T> &other)
+    {
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] /= other.data[i];
+
+        // for (size_t v = 0; v < height; v++)
+        //     for (size_t u = 0; u < width; u++)
+        //         for (size_t c = 0; c < channels; c++)
+        //             data[v][u][c] /= other.data[v][u][0];
     }
 
     // Prints the content of the image to the console
     void Print() const
     {
-        std::cout << "Image (" << width << " x " << height << " x " << channels << ")" << std::endl;
+        std::cout << "Image (" << height << " x " << width << " x " << channels << ")" << std::endl;
         for (size_t v = 0; v < height; v++)
         {
             for (size_t u = 0; u < width; u++)
                 for (size_t c = 0; c < channels; c++)
-                    std::cout << std::to_string(data[v][u][c]) << "\t";
+                    std::cout << std::to_string((*this)(v, u, c)) << "\t";
             std::cout << std::endl;
         }
     }
@@ -353,10 +347,8 @@ public:
     Image<T> operator*(const double scaleFactor) const
     {
         Image<T> result(*this);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) *= scaleFactor;
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] *= scaleFactor;
         return result;
     }
 
@@ -364,10 +356,8 @@ public:
     Image<T> operator/(const double divisor) const
     {
         Image<T> result(*this);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) /= divisor;
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] /= divisor;
         return result;
     }
 
@@ -375,10 +365,8 @@ public:
     Image<T> operator+(const Image &other) const
     {
         Image<T> result(*this);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) += other(v, u, c);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] += other.data[i];
         return result;
     }
 
@@ -386,10 +374,8 @@ public:
     Image<T> operator-(const Image &other) const
     {
         Image<T> result(*this);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) -= other(v, u, c);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] -= other.data[i];
         return result;
     }
 
@@ -403,10 +389,8 @@ public:
     double Mean() const
     {
         double mean = 0.0;
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    mean += data[v][u][c];
+        for (size_t i = 0; i < numPixels; i++)
+            mean += data[i];
         return mean / numPixels;
     }
 
@@ -414,55 +398,35 @@ public:
     double Sum() const
     {
         double sum = 0.0;
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    sum += data[v][u][c];
+        for (size_t i = 0; i < numPixels; i++)
+            sum += data[i];
         return sum;
     }
 
-    // Exponentiates the image to the specified exponent
-    Image<T> Power(const double exponent) const
+    // Squares the image
+    Image<T> Square() const
     {
-        Image<T> result(width, height, channels);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) = std::pow(static_cast<double>(data[v][u][c]), exponent);
+        Image<T> result(*this);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] *= result.data[i];
         return result;
     }
 
-    // Returns the absolute value of the image
-    Image<T> Abs() const
+    // Squares the image in-place
+    Image<T> SquareInplace()
     {
-        Image<T> result(width, height, channels);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) = std::abs(data[v][u][c]);
-        return result;
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] *= data[i];
+        return *this;
     }
 
     // Cast to another type
     template <typename T2>
     Image<T2> Cast() const
     {
-        Image<T2> result(width, height, channels);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) = static_cast<T2>(data[v][u][c]);
-        return result;
-    }
-
-    // Convert to renderable image
-    Image<uint8_t> ToRenderable() const
-    {
-        Image<uint8_t> result(width, height, channels);
-        for (size_t v = 0; v < height; v++)
-            for (size_t u = 0; u < width; u++)
-                for (size_t c = 0; c < channels; c++)
-                    result(v, u, c) = Saturate(static_cast<double>(data[v][u][c]));
+        Image<T2> result(height, width, channels);
+        for (size_t i = 0; i < numPixels; i++) 
+            result.data[i] = static_cast<T2>(data[i]);
         return result;
     }
 };

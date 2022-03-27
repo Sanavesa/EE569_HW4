@@ -10,6 +10,10 @@
 #include "Utility.h"
 #include "Filter.h"
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
 // 25 Law Filters that are 5x5 in order: L5, E5, S5, W5, R5
 const std::vector<Filter> lawFilters =
 {
@@ -90,16 +94,16 @@ const std::vector<Filter> lawFilters =
 };
 
 // Generate feature vectors for each image (n_samples, n_features) = (36 rows, 25 columns) for training, and (12 rows, 25 columns) for testing
-Image<double> CalculateFeatureVectors(const std::string &directory, const std::vector<std::string> &filenames, const size_t width, const size_t height, const size_t channels)
+Image<double> CalculateFeatureVectors(const std::string &directory, const std::vector<std::string> &filenames, const size_t height, const size_t width, const size_t channels)
 {
     const size_t numFilters = lawFilters.size();
     const size_t numImages = filenames.size();
 
-    Image<double> featureVectors(numFilters, numImages, 1);
+    Image<double> featureVectors(numImages, numFilters, 1);
     for (size_t sampleIndex = 0; sampleIndex < numImages; sampleIndex++)
     {
         // Load input image
-        Image<uint8_t> inputImage(width, height, channels);
+        Image<uint8_t> inputImage(height, width, channels);
         if (!inputImage.ImportRAW(directory + filenames[sampleIndex]))
             exit(-1);
 
@@ -110,7 +114,7 @@ Image<double> CalculateFeatureVectors(const std::string &directory, const std::v
         {
             const Filter filter = lawFilters[filterIndex];
             const Image<double> filterResponse = filter.Convolve(input01Image, BoundaryExtension::Reflection);
-            const Image<double> energy = filterResponse.Power(2);
+            const Image<double> energy = filterResponse.Square();
             const double mean = energy.Mean();
             featureVectors(sampleIndex, filterIndex, 0) = mean;
         }
@@ -178,6 +182,56 @@ void CalculateDiscriminantPower(const Image<double> &featureVectors)
 
     std::cout << "Min Discriminant Power " << minDPIdx << " with value " << minDP << std::endl;
     std::cout << "Max Discriminant Power " << maxDPIdx << " with value " << maxDP << std::endl;
+}
+
+// Generates the feature vectors for the specified image by using the 25 Law filters, and computes average energy using provided filter
+// Returns (W, H, 25) matrix
+Image<double> CalculateFeatureVectors(const Image<double> &image, const Filter &filter)
+{
+    const size_t numFilters = lawFilters.size();
+    Image<double> featureVectors(image.height, image.width, numFilters);
+
+    for (size_t filterIndex = 0; filterIndex < numFilters; filterIndex++)
+    {
+        std::cout << "Processing filter " << (filterIndex+1) << " / " << numFilters << "..." << std::endl;
+        
+        // Convolve the law filter with the image
+        const Filter lawFilter = lawFilters[filterIndex];
+        const Image<double> energy = lawFilter.Convolve(image, BoundaryExtension::Reflection).SquareInplace();
+
+        // Convolve with the specified filter to compute average energy and store in the specified dimension
+        filter.ConvolveInplace(energy, 0, featureVectors, filterIndex, BoundaryExtension::Reflection);
+    }
+
+    return featureVectors;
+}
+
+// CLAHE using OpenCV
+Image<uint8_t> CLAHistogramEqualization(const Image<uint8_t> &image, const size_t channel = 0)
+{
+	using namespace cv;
+
+	const Mat mat(static_cast<int32_t>(image.height), static_cast<int32_t>(image.width), CV_8UC1, image.data);
+
+	// Construct CLAHE with the specified parameters
+	const Ptr<CLAHE> clahe = createCLAHE();
+	clahe->setClipLimit(5);
+	clahe->setTilesGridSize(Size(8, 8));
+
+	// Apply CLAHE
+	Mat dst;
+	clahe->apply(mat, dst);
+
+	// Reconstruct image calculated from CLAHE
+	Image<uint8_t> result(image);
+    for (uint32_t v = 0; v < image.height; v++)
+        for (uint32_t u = 0; u < image.width; u++)
+		{
+			uint8_t *pixel = dst.ptr(v, u);
+            result(v, u, 0) = pixel[0];
+		}
+
+	return result;
 }
 
 #endif // IMPLEMENTATIONS_H
