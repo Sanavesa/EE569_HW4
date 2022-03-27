@@ -32,10 +32,18 @@ template <typename T>
 class Image
 {
 private:
-    // Converts 1d to 3d index
+    // Converts 3d to 1d index
     inline int32_t IndexAt(int32_t row, int32_t column, size_t channel) const
     {
         return static_cast<int32_t>((row * channels * width) + (column * channels) + channel);
+    }
+
+    // Converts 1d to 3d index
+    inline void IndexAt3D(const int32_t index, int32_t &row, int32_t &column, int32_t &channel) const
+    {
+        row = index / static_cast<int32_t>(channels * width);
+        column = (index / static_cast<int32_t>(channels)) % static_cast<int32_t>(width);
+        channel = index % static_cast<int32_t>(channels);
     }
 
 public:
@@ -310,24 +318,11 @@ public:
             data[i] = other.data[i];
     }
 
-    // // Copy the other image at the specified channels
-    // void Copy(const Image<T> &other, const size_t channel, const size_t otherChannel)
-    // {
-    //     for (size_t v = 0; v < height; v++)
-    //         for (size_t u = 0; u < width; u++)
-    //             data[v][u][channel] = other.data[v][u][otherChannel];
-    // }
-
     // Elementwise-divide the image by the other image, across all channels separately
     void ElementwiseDivide(const Image<T> &other)
     {
         for (size_t i = 0; i < numPixels; i++)
             data[i] /= other.data[i];
-
-        // for (size_t v = 0; v < height; v++)
-        //     for (size_t u = 0; u < width; u++)
-        //         for (size_t c = 0; c < channels; c++)
-        //             data[v][u][c] /= other.data[v][u][0];
     }
 
     // Prints the content of the image to the console
@@ -428,6 +423,48 @@ public:
         for (size_t i = 0; i < numPixels; i++) 
             result.data[i] = static_cast<T2>(data[i]);
         return result;
+    }
+
+    // Returns an OpenCV Mat object that contains the image's data
+    cv::Mat ToMat() const
+    {
+        using namespace cv;
+        if (channels < 1 || channels > 4)
+        {
+            std::cout << "Cannot convert image to OpenCV Mat as it contains too many channels. Shape = (" << height << " x " << width << " x " << channels << ")." << std::endl;
+            exit(-1);
+        }
+
+        const int32_t type = CV_MAKETYPE(CV_8U, static_cast<int32_t>(channels));
+        Mat mat = Mat::zeros(static_cast<int32_t>(height), static_cast<int32_t>(width), type);
+
+        int32_t v, u, c;
+        for (int32_t i = 0; i < numPixels; i++)
+        {
+            // Retrieves the 3D position from the index
+            IndexAt3D(i, v, u, c);
+
+            // OpenCV uses inverted channel order (i.e.e BGR instead of RGB)
+            const int32_t invertedC = static_cast<int32_t>(channels) - c - 1;
+            const uint8_t intensity = Saturate<T>(data[i]);
+            switch(channels)
+            {
+                case 1:
+                    mat.at<uint8_t>(v, u) = intensity;
+                    break;
+                case 2:
+                    mat.at<Vec2b>(v, u)[invertedC] = intensity;
+                    break;
+                case 3:
+                    mat.at<Vec3b>(v, u)[invertedC] = intensity;
+                    break;
+                case 4:
+                    mat.at<Vec4b>(v, u)[invertedC] = intensity;
+                    break;
+            }
+        }
+
+        return mat;
     }
 };
 

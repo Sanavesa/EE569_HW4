@@ -1,0 +1,30 @@
+Cat_1 and Cat_Dog
+	Cat_1 has 666 key points
+	Cat_Dog has 1410 key points
+	Cat_1 descriptor shape: (666, 128, 1)
+	Cat_Dog descriptor shape: (1410, 128, 1)
+	Max-Scale Key Point at index 632 with x 428.859, y 263.701, orientation 299.739, scale 86.8034
+	Max-Scale Key Point at index 1082 with x 442.268, y 245.615, orientation 314.542, scale 110.89
+
+Dog_1 and Cat_Dog
+	Dog_1 has 581 key points
+	Cat_Dog has 1410 key points
+	Dog_1 descriptor shape: (581, 128, 1)
+	Cat_Dog descriptor shape: (1410, 128, 1)
+	Max-Scale Key Point at index 441 with x 329.097, y 197.888, orientation 185, scale 71.3428
+	Max-Scale Key Point at index 1082 with x 442.268, y 245.615, orientation 314.542, scale 110.89
+
+Cat_1 and Cat_2
+	Cat_1 has 666 key points
+	Cat_2 has 742 key points
+	Cat_1 descriptor shape: (666, 128, 1)
+	Max-Scale Key Point at index 632 with x 428.859, y 263.701, orientation 299.739, scale 86.8034
+	Max-Scale Key Point at index 27 with x 124.449, y 134.01, orientation 42.316, scale 73.4414
+
+Cat_1 and Dog_1
+	Cat_1 has 666 key points
+	Dog_1 has 581 key points
+	Cat_1 descriptor shape: (666, 128, 1)
+	Dog_1 descriptor shape: (581, 128, 1)
+	Max-Scale Key Point at index 632 with x 428.859, y 263.701, orientation 299.739, scale 86.8034
+	Max-Scale Key Point at index 441 with x 329.097, y 197.888, orientation 185, scale 71.3428
