@@ -1,30 +1,34 @@
-Cat_1 and Cat_Dog
-	Cat_1 has 666 key points
-	Cat_Dog has 1410 key points
-	Cat_1 descriptor shape: (666, 128, 1)
-	Cat_Dog descriptor shape: (1410, 128, 1)
-	Max-Scale Key Point at index 632 with x 428.859, y 263.701, orientation 299.739, scale 86.8034
-	Max-Scale Key Point at index 1082 with x 442.268, y 245.615, orientation 314.542, scale 110.89
+PS D:\Programming\Github\EE569_HW4\build\Debug> .\EE569_HW4_Q3b.exe Dog_1 Cat_Dog 400 600 3
+Dog_1 has 535 key points
+Cat_Dog has 1440 key points
+Dog_1 descriptor shape: (535, 128, 1)
+Max-Scale Key Point at index 243 with x 236.015, y 74.9242, orientation 89.3546, scale 67.4377
+Max-Scale Key Point at index 411 with x 176.679, y 227.511, orientation 232.549, scale 106.383
+Done
 
-Dog_1 and Cat_Dog
-	Dog_1 has 581 key points
-	Cat_Dog has 1410 key points
-	Dog_1 descriptor shape: (581, 128, 1)
-	Cat_Dog descriptor shape: (1410, 128, 1)
-	Max-Scale Key Point at index 441 with x 329.097, y 197.888, orientation 185, scale 71.3428
-	Max-Scale Key Point at index 1082 with x 442.268, y 245.615, orientation 314.542, scale 110.89
+PS D:\Programming\Github\EE569_HW4\build\Debug> .\EE569_HW4_Q3b.exe Cat_1 Dog_1 400 600 3  
+Cat_1 has 659 key points
+Dog_1 has 535 key points
+Cat_1 descriptor shape: (659, 128, 1)
+Dog_1 descriptor shape: (535, 128, 1)
+Max-Scale Key Point at index 625 with x 422.646, y 264.038, orientation 55.1363, scale 87.0229
+Max-Scale Key Point at index 243 with x 236.015, y 74.9242, orientation 89.3546, scale 67.4377
+Done
 
-Cat_1 and Cat_2
-	Cat_1 has 666 key points
-	Cat_2 has 742 key points
-	Cat_1 descriptor shape: (666, 128, 1)
-	Max-Scale Key Point at index 632 with x 428.859, y 263.701, orientation 299.739, scale 86.8034
-	Max-Scale Key Point at index 27 with x 124.449, y 134.01, orientation 42.316, scale 73.4414
+PS D:\Programming\Github\EE569_HW4\build\Debug> .\EE569_HW4_Q3b.exe Cat_1 Cat_2 400 600 3  
+Cat_1 has 659 key points
+Cat_2 has 821 key points
+Cat_1 descriptor shape: (659, 128, 1)
+Cat_2 descriptor shape: (821, 128, 1)
+Max-Scale Key Point at index 625 with x 422.646, y 264.038, orientation 55.1363, scale 87.0229
+Max-Scale Key Point at index 26 with x 124.546, y 134.001, orientation 42.0615, scale 73.1547
+Done
 
-Cat_1 and Dog_1
-	Cat_1 has 666 key points
-	Dog_1 has 581 key points
-	Cat_1 descriptor shape: (666, 128, 1)
-	Dog_1 descriptor shape: (581, 128, 1)
-	Max-Scale Key Point at index 632 with x 428.859, y 263.701, orientation 299.739, scale 86.8034
-	Max-Scale Key Point at index 441 with x 329.097, y 197.888, orientation 185, scale 71.3428
+PS D:\Programming\Github\EE569_HW4\build\Debug> .\EE569_HW4_Q3b.exe Cat_1 Cat_Dog 400 600 3
+Cat_1 has 659 key points
+Cat_Dog has 1440 key points
+Cat_1 descriptor shape: (659, 128, 1)
+Cat_Dog descriptor shape: (1440, 128, 1)
+Max-Scale Key Point at index 625 with x 422.646, y 264.038, orientation 55.1363, scale 87.0229
+Max-Scale Key Point at index 411 with x 176.679, y 227.511, orientation 232.549, scale 106.383
+Done
