@@ -1,0 +1,21 @@
+Loaded build/debug/cat_1 659 descriptors
+Loaded build/debug/cat_2 821 descriptors
+Loaded build/debug/dog_1 535 descriptors
+Loaded build/debug/cat_dog 1440 descriptors
+Loaded build/debug/dog_2 804 descriptors
+
+----------------------------------------------------------------------------------------------------
+Number of components -1
+[81 84 79 85 74 75 97 84]
+[ 65  67  48 149  58  57  41  50]
+[117 103  62 158 116  89  83  76]
+cat_1 and dog_2 similarity = 0.78
+dog_1 and dog_2 similarity = 0.83
+
+----------------------------------------------------------------------------------------------------
+Number of components 20
+[ 77  78  73  96  75  87  56 117]
+[53 73 62 85 59 53 60 90]
+[105 121  77  90 101  89  91 130]
+cat_1 and dog_2 similarity = 0.84
+dog_1 and dog_2 similarity = 0.86
