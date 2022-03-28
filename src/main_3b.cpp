@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
 
     // Convert images to grayscale for SIFT
     Mat imageGrayMat1, imageGrayMat2;
-    cvtColor(imageMat1,imageGrayMat1,COLOR_RGB2GRAY);
-    cvtColor(imageMat2,imageGrayMat2,COLOR_RGB2GRAY);
+    cvtColor(imageMat1,imageGrayMat1,COLOR_BGR2GRAY);
+    cvtColor(imageMat2,imageGrayMat2,COLOR_BGR2GRAY);
 
     // Extract keypoints and descriptors using OpenCV's SIFT
     Ptr<SIFT> sift = SIFT::create();
@@ -156,8 +156,8 @@ int main(int argc, char *argv[])
 
     // Visualize and export max-scale key points as an image
     Mat visualizationKeypoints1Max, visualizationKeypoints2Max;
-    drawKeypoints(imageMat1, keypoints1MaxVec, visualizationKeypoints1Max, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    drawKeypoints(imageMat2, keypoints2MaxVec, visualizationKeypoints2Max, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    drawKeypoints(imageMat1, keypoints1MaxVec, visualizationKeypoints1Max, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    drawKeypoints(imageMat2, keypoints2MaxVec, visualizationKeypoints2Max, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
     imwrite(input1FilenameNoExtension + "_max_keypoints.png", visualizationKeypoints1Max);
     imwrite(input2FilenameNoExtension + "_max_keypoints.png", visualizationKeypoints2Max);
 
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 
     // Display the match
     Mat visualizationMat;
-    drawMatches(imageMat1, kp1, imageMat2, kp2, matches, visualizationMat, Scalar::all(-1), Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    drawMatches(imageMat1, kp1, imageMat2, kp2, matches, visualizationMat, Scalar(0, 0, 255), Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
     imwrite(input1FilenameNoExtension + "_and_" + input2FilenameNoExtension + "_match.png", visualizationMat);
 
     std::cout << "Done" << std::endl;
