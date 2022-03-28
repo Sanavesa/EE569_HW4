@@ -1,0 +1,2153 @@
+#define _USE_MATH_DEFINES
+
+#include "Filter.h"
+#include "Utility.h"
+
+#include <iostream>
+#include <cmath>
+#include <limits>
+
+// Creates a new filter with the specified value with the specified filter size
+Filter::Filter(const size_t size, const double fillValue) : size(size), squaredSize(size * size), halfSize(static_cast<int32_t>(size / 2))
+{
+    data = new double [squaredSize];
+    for (size_t i = 0; i < squaredSize; i++)
+        data[i] = fillValue;
+}
+
+// Creates a filter from the given flatten array with the specified size.
+Filter::Filter(const size_t size, const std::initializer_list<double> values): size(size), squaredSize(size * size), halfSize(static_cast<int32_t>(size / 2))
+{
+    data = new double [squaredSize];
+    size_t i = 0;
+    for (const auto element : values)
+        data[i++] = element;
+}
+
+// Copy constructor
+Filter::Filter(const Filter &other) : size(other.size), squaredSize(other.squaredSize), halfSize(other.halfSize)
+{
+    data = new double[squaredSize];
+    for (size_t i = 0; i < squaredSize; i++)
+        data[i] = other.data[i];
+}
+
+// Frees all dynamically allocated memory resources
+Filter::~Filter()
+{
+    delete[] data;
+}
+
+// Retrieves the pixel value at the specified location; does not check for out of bounds
+inline double Filter::operator()(const size_t row, const size_t column) const
+{
+    return data[row * size + column];
+}
+
+// Print the contents of the filter to console
+void Filter::Print() const
+{
+    std::cout << "Filter (" << size << " x " << size << ")" << std::endl;
+    for (uint32_t v = 0; v < size; v++)
+    {
+        for (uint32_t u = 0; u < size; u++)
+            std::cout << (*this)(v, u) << "\t";
+        std::cout << std::endl;
+    }
+}
+
+// Computes the mean of the filter
+double Filter::Mean() const
+{
+    double mean = 0.0;
+    for (size_t i = 0; i < squaredSize; i++)
+        mean += data[i];
+    return mean / size;
+}
+
+#include "Utility.h"
+
+/*
+#################################################################################################################
+
+# EE569 Homework Assignment #4
+# Date: March 27, 2022
+# Name: Mohammad Alali
+# ID: 5661-9219-82
+# email: alalim@usc.edu
+
+#################################################################################################################
+
+    CONSOLE APPLICATION : SIFT and Image Matching - Bag of Words
+	
+#################################################################################################################
+
+This program will load two images and apply SIFT to extract their keypoints and descriptors then output them to
+a file for Python processing, which will perform K-means to find the codebook with K words.
+
+#################################################################################################################
+
+Arguments:
+    programName
+Example:
+    .\EE569_HW4_Q3c.exe
+
+########################################### Notes on Arguments ####################################################
+
+1- The file paths can be either relative to the executable or absolute paths.
+2- If 'NoExtension' is on an argument, the image filename SHOULD NOT include an extension like .raw, the program will add that automatically.
+3- All arguments are mandatory, only arguments marked with [varName] have defaults.
+
+############################################### Other Files #######################################################
+
+Image.h, Image.cpp
+	These files contain an abstraction for handling RAW images to simplify programming and for ease of readability.
+
+Utility.h, Utility.cpp
+	These files provide auxiliary helper functions used through the program.
+
+Implementations.h
+	This file contains the concrete implementation of the algorithms required in the assignment.
+
+#################################################################################################################
+*/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include "Image.h"
+#include "Implementations.h"
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
+#include <opencv2/xfeatures2d/nonfree.hpp>
+#include <opencv2/calib3d.hpp>
+#include "opencv2/core/utils/logger.hpp"
+
+using namespace cv;
+using namespace cv::xfeatures2d;
+
+// Loads a raw image and converts it to a grayscale OpenCV Mat
+Mat LoadGrayImage(const std::string &filename, const size_t height, const size_t width, const size_t channels)
+{
+    // Load image from file
+    Image<uint8_t> image(height, width, channels);
+	if (!image.ImportRAW(filename + ".raw"))
+        exit(-1);
+    
+    // Convert image to OpenCV Mat
+    Mat mat = image.ToMat();
+
+    // Convert image to grayscale for SIFT
+    Mat grayMat;
+    cvtColor(mat, grayMat, COLOR_BGR2GRAY);
+
+    return grayMat;
+}
+
+// Extract descriptors using OpenCV's SIFT and export them to a file
+void ExportImageDescriptors(const std::string &filename, const Mat& grayImage)
+{
+    Ptr<SIFT> sift = SIFT::create();
+    std::vector<KeyPoint> keypoints;
+    Mat descriptors;
+    sift->detectAndCompute(grayImage, noArray(), keypoints, descriptors);
+
+    // Export the descriptors
+    cv::FileStorage file(filename + "_descriptors.txt", cv::FileStorage::WRITE);
+    file << "descriptors" << descriptors;
+}
+
+int main(int argc, char *argv[])
+{
+    // Make OpenCV silent
+    utils::logging::setLogLevel(utils::logging::LogLevel::LOG_LEVEL_SILENT);
+
+    // Image dimensions
+    const size_t height = 400;
+    const size_t width = 600;
+    const size_t channels = 3;
+
+    // Load images
+    Mat cat1Image = LoadGrayImage("cat_1", height, width, channels);
+    Mat cat2Image = LoadGrayImage("cat_2", height, width, channels);
+    Mat dog1Image = LoadGrayImage("dog_1", height, width, channels);
+    Mat dog2Image = LoadGrayImage("dog_2", height, width, channels);
+    Mat catDogImage = LoadGrayImage("cat_dog", height, width, channels);
+
+    // Extract and export descriptors using OpenCV's SIFT
+    ExportImageDescriptors("cat_1", cat1Image);
+    ExportImageDescriptors("cat_2", cat2Image);
+    ExportImageDescriptors("dog_1", dog1Image);
+    ExportImageDescriptors("dog_2", dog2Image);
+    ExportImageDescriptors("cat_dog", catDogImage);
+
+    std::cout << "Done" << std::endl;
+    return 0;
+}
+
+/*
+#################################################################################################################
+
+# EE569 Homework Assignment #4
+# Date: March 27, 2022
+# Name: Mohammad Alali
+# ID: 5661-9219-82
+# email: alalim@usc.edu
+
+#################################################################################################################
+
+    CONSOLE APPLICATION : SIFT and Image Matching - Image Matching
+	
+#################################################################################################################
+
+This program will load two images and apply SIFT to extract their keypoints and descriptors. Then perform nearest
+neighbor to match points of interest between the image pair. This was done using OpenCV.
+
+#################################################################################################################
+
+Arguments:
+    programName input1FilenameNoExtension input2FilenameNoExtension height width channels
+    input*FilenameNoExtension is the .raw image without the extension
+Example:
+    .\EE569_HW4_Q3b.exe Cat_1 Cat_Dog 400 600 3
+    .\EE569_HW4_Q3b.exe Dog_1 Cat_Dog 400 600 3
+    .\EE569_HW4_Q3b.exe Cat_1 Cat_2 400 600 3
+    .\EE569_HW4_Q3b.exe Cat_1 Dog_1 400 600 3
+
+########################################### Notes on Arguments ####################################################
+
+1- The file paths can be either relative to the executable or absolute paths.
+2- If 'NoExtension' is on an argument, the image filename SHOULD NOT include an extension like .raw, the program will add that automatically.
+3- All arguments are mandatory, only arguments marked with [varName] have defaults.
+
+############################################### Other Files #######################################################
+
+Image.h, Image.cpp
+	These files contain an abstraction for handling RAW images to simplify programming and for ease of readability.
+
+Utility.h, Utility.cpp
+	These files provide auxiliary helper functions used through the program.
+
+Implementations.h
+	This file contains the concrete implementation of the algorithms required in the assignment.
+
+#################################################################################################################
+*/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include "Image.h"
+#include "Implementations.h"
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
+#include <opencv2/xfeatures2d/nonfree.hpp>
+#include <opencv2/calib3d.hpp>
+#include "opencv2/core/utils/logger.hpp"
+
+using namespace cv;
+using namespace cv::xfeatures2d;
+
+// Returns a vector of 1 element which contains the key point with the largest size.
+// The index will be the index in the keypoints vector that corresponds to the largest size key point.
+std::vector<KeyPoint> FindMaxScaleKeyPoint(const std::vector<KeyPoint> &keypoints, int32_t &index)
+{
+    index = -1;
+    for (int32_t i = 0; i < keypoints.size(); i++)
+    {
+        if (index == -1 || keypoints[i].size > keypoints[index].size)
+            index = i;
+    }
+
+    std::vector<KeyPoint> result;
+    result.push_back(keypoints[index]);
+    std::cout << "Max-Scale Key Point at index " << index << " with x " << keypoints[index].pt.x << ", y " << keypoints[index].pt.y << ", orientation " << keypoints[index].angle << ", scale " << keypoints[index].size << std::endl;
+
+    return result;
+}
+
+int main(int argc, char *argv[])
+{
+    // Make OpenCV silent
+    utils::logging::setLogLevel(utils::logging::LogLevel::LOG_LEVEL_SILENT);
+
+    // Read the console arguments
+    // Check for proper syntax
+    if (argc != 6)
+    {
+        std::cout << "Syntax Error - Arguments must be:" << std::endl;
+        std::cout << "programName input1FilenameNoExtension input2FilenameNoExtension height width channels" << std::endl;
+        std::cout << "input*FilenameNoExtension is the .raw image without the extension" << std::endl;
+        return -1;
+    }
+
+    // Parse console arguments
+	const std::string input1FilenameNoExtension = argv[1];
+	const std::string input2FilenameNoExtension = argv[2];
+	const size_t height = (size_t)atoi(argv[3]);
+	const size_t width = (size_t)atoi(argv[4]);
+	const size_t channels = (size_t)atoi(argv[5]);
+
+    // Load input image 1
+    Image<uint8_t> inputImage1(height, width, channels);
+	if (!inputImage1.ImportRAW(input1FilenameNoExtension + ".raw"))
+		return -1;
+
+    // Load input image 2
+    Image<uint8_t> inputImage2(height, width, channels);
+	if (!inputImage2.ImportRAW(input2FilenameNoExtension + ".raw"))
+		return -1;
+
+    // Convert images to OpenCV Mat
+    Mat imageMat1 = inputImage1.ToMat();
+    Mat imageMat2 = inputImage2.ToMat();
+
+    // Convert images to grayscale for SIFT
+    Mat imageGrayMat1, imageGrayMat2;
+    cvtColor(imageMat1,imageGrayMat1,COLOR_BGR2GRAY);
+    cvtColor(imageMat2,imageGrayMat2,COLOR_BGR2GRAY);
+
+    // Extract keypoints and descriptors using OpenCV's SIFT
+    Ptr<SIFT> sift = SIFT::create();
+    std::vector<KeyPoint> keypoints1, keypoints2;
+    Mat descriptors1, descriptors2;
+    sift->detectAndCompute(imageGrayMat1, noArray(), keypoints1, descriptors1);
+    sift->detectAndCompute(imageGrayMat2, noArray(), keypoints2, descriptors2);
+
+    // Print statistics about the number of key points
+    std::cout << input1FilenameNoExtension << " has " << keypoints1.size() << " key points" << std::endl;
+    std::cout << input2FilenameNoExtension << " has " << keypoints2.size() << " key points" << std::endl;
+    std::cout << input1FilenameNoExtension << " descriptor shape: (" << descriptors1.rows << ", " << descriptors1.cols << ", " << descriptors1.channels() << ")" << std::endl;
+    std::cout << input2FilenameNoExtension << " descriptor shape: (" << descriptors2.rows << ", " << descriptors2.cols << ", " << descriptors2.channels() << ")" << std::endl;
+
+    // Visualize and export key points as an image
+    Mat visualizationKeypoints1, visualizationKeypoints2;
+    drawKeypoints(imageMat1, keypoints1, visualizationKeypoints1, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    drawKeypoints(imageMat2, keypoints2, visualizationKeypoints2, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    imwrite(input1FilenameNoExtension + "_keypoints.png", visualizationKeypoints1);
+    imwrite(input2FilenameNoExtension + "_keypoints.png", visualizationKeypoints2);
+
+    // Find max-scale keypoint
+    int32_t maxKeypoints1Index = -1;
+    std::vector<KeyPoint> keypoints1MaxVec = FindMaxScaleKeyPoint(keypoints1, maxKeypoints1Index);
+    int32_t maxKeypoints2Index = -1;
+    std::vector<KeyPoint> keypoints2MaxVec = FindMaxScaleKeyPoint(keypoints2, maxKeypoints2Index);
+
+    // Visualize and export max-scale key points as an image
+    Mat visualizationKeypoints1Max, visualizationKeypoints2Max;
+    drawKeypoints(imageMat1, keypoints1MaxVec, visualizationKeypoints1Max, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    drawKeypoints(imageMat2, keypoints2MaxVec, visualizationKeypoints2Max, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    imwrite(input1FilenameNoExtension + "_max_keypoints.png", visualizationKeypoints1Max);
+    imwrite(input2FilenameNoExtension + "_max_keypoints.png", visualizationKeypoints2Max);
+
+    // Use a bruteforced matcher with Euclidean distance (L2) to compute the distances and perform knn
+    Ptr<BFMatcher> matcher = BFMatcher::create(NORM_L2, false);
+    std::vector<std::vector<DMatch>> knnMatches;
+    matcher->knnMatch(descriptors1, descriptors2, knnMatches, 1); // 1 = first nearest neighbor
+    const DMatch bestMatch = knnMatches[maxKeypoints1Index][0];
+    
+    // Retain only the match we want to display (the one with the max-scale keypoint)
+    std::vector<DMatch> matches(1, DMatch(0, 0, bestMatch.imgIdx, bestMatch.distance));
+    std::vector<KeyPoint> kp1(1, keypoints1[bestMatch.queryIdx]);
+    std::vector<KeyPoint> kp2(1, keypoints2[bestMatch.trainIdx]);
+
+    // Display the match
+    Mat visualizationMat;
+    drawMatches(imageMat1, kp1, imageMat2, kp2, matches, visualizationMat, Scalar(0, 0, 255), Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    imwrite(input1FilenameNoExtension + "_and_" + input2FilenameNoExtension + "_match.png", visualizationMat);
+
+    std::cout << "Done" << std::endl;
+    return 0;
+}
+
+/*
+#################################################################################################################
+
+# EE569 Homework Assignment #4
+# Date: March 27, 2022
+# Name: Mohammad Alali
+# ID: 5661-9219-82
+# email: alalim@usc.edu
+
+#################################################################################################################
+
+    CONSOLE APPLICATION : Texture Segmentation - Advanced Texture Segmentation
+	
+#################################################################################################################
+
+This file will load an image and convolve the 25 laws filters to get a richer features. Moreover, it will apply a
+convolving window over the energy matrix and output the 24 training features to python for K-means classification.
+Also, it will preprocess the image with histogram equalization (CLAHE).
+
+#################################################################################################################
+
+Arguments:
+    programName inputFilenameNoExtension height width channels oddWindowSize
+    inputFilenameNoExtension is the .raw image without the extension
+Example:
+    .\EE569_HW4_Q2b.exe Mosaic 512 512 1 33
+
+########################################### Notes on Arguments ####################################################
+
+1- The file paths can be either relative to the executable or absolute paths.
+2- If 'NoExtension' is on an argument, the image filename SHOULD NOT include an extension like .raw, the program will add that automatically.
+3- All arguments are mandatory, only arguments marked with [varName] have defaults.
+
+############################################### Other Files #######################################################
+
+Image.h, Image.cpp
+	These files contain an abstraction for handling RAW images to simplify programming and for ease of readability.
+
+Utility.h, Utility.cpp
+	These files provide auxiliary helper functions used through the program.
+
+Implementations.h
+	This file contains the concrete implementation of the algorithms required in the assignment.
+
+#################################################################################################################
+*/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include "Image.h"
+#include "Implementations.h"
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
+int main(int argc, char *argv[])
+{
+    // Read the console arguments
+    // Check for proper syntax
+    if (argc != 6)
+    {
+        std::cout << "Syntax Error - Arguments must be:" << std::endl;
+        std::cout << "programName inputFilenameNoExtension height width channels oddWindowSize" << std::endl;
+        std::cout << "inputFilenameNoExtension is the .raw image without the extension" << std::endl;
+        return -1;
+    }
+
+    // Parse console arguments
+	const std::string inputFilenameNoExtension = argv[1];
+	const size_t height = (size_t)atoi(argv[2]);
+	const size_t width = (size_t)atoi(argv[3]);
+	const size_t channels = (size_t)atoi(argv[4]);
+	const size_t windowSize = (size_t)atoi(argv[5]);
+
+    // Load input image
+    Image<uint8_t> inputImage(height, width, channels);
+	if (!inputImage.ImportRAW(inputFilenameNoExtension + ".raw"))
+		return -1;
+
+    // Preprocess the image
+    Image<uint8_t> imageCLAHE = CLAHistogramEqualization(inputImage);
+    imageCLAHE.ExportRAW(inputFilenameNoExtension + "_clahe.raw");
+
+    // Normalize input image magnitude
+    // const Image<double> image01 = imageCLAHE.Cast<double>() / 255.0;
+
+    // Extract feature vectors
+    const Filter filter(windowSize, 1.0 / static_cast<double>(windowSize * windowSize));
+    const Image<double> featureVectors = CalculateFeatureVectors(imageCLAHE.Cast<double>(), filter);
+
+    // Export to CSV
+    const std::string outputFilename = inputFilenameNoExtension + "_b_features_" + std::to_string(windowSize) + ".csv";
+    std::ofstream outStreamTrain(outputFilename, std::ofstream::trunc);
+
+    // Check if file opened successfully
+    if (!outStreamTrain.is_open())
+    {
+        std::cout << "Cannot open file for writing: " << outputFilename << std::endl;
+        return false;
+    }
+
+    // First line includes the width x height x channels information
+    outStreamTrain << featureVectors.width << "," << featureVectors.height << "," << featureVectors.channels << std::endl;
+
+    // Write to the file: row-by-row, RGB interleaved
+    std::cout << "Exporting Feature Vectors (" << featureVectors.width << " x " << featureVectors.height << " x " << featureVectors.channels << ")" << std::endl;
+    for (size_t v = 0; v < featureVectors.height; v++)
+    {
+        for (size_t u = 0; u < featureVectors.width; u++)
+        {
+            for (size_t c = 0; c < featureVectors.channels; c++)
+                outStreamTrain << featureVectors(v, u, c) << ",";
+            outStreamTrain << std::endl;
+        }
+    }
+
+    outStreamTrain.close();
+
+    std::cout << "Done" << std::endl;
+    return 0;
+}
+
+/*
+#################################################################################################################
+
+# EE569 Homework Assignment #4
+# Date: March 27, 2022
+# Name: Mohammad Alali
+# ID: 5661-9219-82
+# email: alalim@usc.edu
+
+#################################################################################################################
+
+    CONSOLE APPLICATION : Texture Segmentation - Basic Texture Segmentation
+	
+#################################################################################################################
+
+This file will load an image and convolve the 25 laws filters to get a richer features. Moreover, it will apply a
+convolving window over the energy matrix and output the 24 training features to python for K-means classification.
+
+#################################################################################################################
+
+Arguments:
+    programName inputFilenameNoExtension height width channels oddWindowSize
+    inputFilenameNoExtension is the .raw image without the extension
+Example:
+    .\EE569_HW4_Q2a.exe Mosaic 512 512 1 33
+
+########################################### Notes on Arguments ####################################################
+
+1- The file paths can be either relative to the executable or absolute paths.
+2- If 'NoExtension' is on an argument, the image filename SHOULD NOT include an extension like .raw, the program will add that automatically.
+3- All arguments are mandatory, only arguments marked with [varName] have defaults.
+
+############################################### Other Files #######################################################
+
+Image.h, Image.cpp
+	These files contain an abstraction for handling RAW images to simplify programming and for ease of readability.
+
+Utility.h, Utility.cpp
+	These files provide auxiliary helper functions used through the program.
+
+Implementations.h
+	This file contains the concrete implementation of the algorithms required in the assignment.
+
+#################################################################################################################
+*/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include "Image.h"
+#include "Implementations.h"
+
+int main(int argc, char *argv[])
+{
+    // Read the console arguments
+    // Check for proper syntax
+    if (argc != 6)
+    {
+        std::cout << "Syntax Error - Arguments must be:" << std::endl;
+        std::cout << "programName inputFilenameNoExtension height width channels oddWindowSize" << std::endl;
+        std::cout << "inputFilenameNoExtension is the .raw image without the extension" << std::endl;
+        return -1;
+    }
+
+	// Parse console arguments
+	const std::string inputFilenameNoExtension = argv[1];
+	const size_t height = (size_t)atoi(argv[2]);
+	const size_t width = (size_t)atoi(argv[3]);
+	const size_t channels = (size_t)atoi(argv[4]);
+	const size_t windowSize = (size_t)atoi(argv[5]);
+
+    // Load input image
+    Image<uint8_t> inputImage(height, width, channels);
+	if (!inputImage.ImportRAW(inputFilenameNoExtension + ".raw"))
+		return -1;
+
+    // Normalize input image magnitude
+    // const Image<double> image01 = inputImage.Cast<double>() / 255.0;
+
+    // Extract feature vectors
+    const Filter filter(windowSize, 1.0 / static_cast<double>((windowSize * windowSize)));
+    const Image<double> featureVectors = CalculateFeatureVectors(inputImage.Cast<double>(), filter);
+
+    // Export to CSV
+    const std::string outputFilename = inputFilenameNoExtension + "_a_features_" + std::to_string(windowSize) + ".csv";
+    std::ofstream outStreamTrain(outputFilename, std::ofstream::trunc);
+
+    // Check if file opened successfully
+    if (!outStreamTrain.is_open())
+    {
+        std::cout << "Cannot open file for writing: " << outputFilename << std::endl;
+        return false;
+    }
+
+    // First line includes the width x height x channels information
+    outStreamTrain << featureVectors.width << "," << featureVectors.height << "," << featureVectors.channels << std::endl;
+
+    // Write to the file: row-by-row, RGB interleaved
+    std::cout << "Exporting Feature Vectors (" << featureVectors.width << " x " << featureVectors.height << " x " << featureVectors.channels << ")" << std::endl;
+    for (size_t v = 0; v < featureVectors.height; v++)
+    {
+        for (size_t u = 0; u < featureVectors.width; u++)
+        {
+            for (size_t c = 0; c < featureVectors.channels; c++)
+                outStreamTrain << featureVectors(v, u, c) << ",";
+            outStreamTrain << std::endl;
+        }
+    }
+
+    outStreamTrain.close();
+
+    std::cout << "Done" << std::endl;
+    return 0;
+}
+
+/*
+#################################################################################################################
+
+# EE569 Homework Assignment #4
+# Date: March 27, 2022
+# Name: Mohammad Alali
+# ID: 5661-9219-82
+# email: alalim@usc.edu
+
+#################################################################################################################
+
+    CONSOLE APPLICATION : Texture Classification – Feature Extraction
+	
+#################################################################################################################
+
+This file will load a dataset and convolve the 25 laws filters to get a richer features per image in the dataset.
+Then, it will analyze the discriminant power of each filter and output the 36x25 training matrix to python for PCA
+and nearest neighbor classification. The same is done for the testing dataset.
+
+#################################################################################################################
+
+Arguments:
+    programName trainDirectory testDirectory height width channels
+    *Directory must end with /"
+Example:
+    .\EE569_HW4_Q1a.exe images/train/ images/test/ 128 128 1
+
+########################################### Notes on Arguments ####################################################
+
+1- The file paths can be either relative to the executable or absolute paths.
+2- If 'NoExtension' is on an argument, the image filename SHOULD NOT include an extension like .raw, the program will add that automatically.
+3- All arguments are mandatory, only arguments marked with [varName] have defaults.
+
+############################################### Other Files #######################################################
+
+Image.h, Image.cpp
+	These files contain an abstraction for handling RAW images to simplify programming and for ease of readability.
+
+Utility.h, Utility.cpp
+	These files provide auxiliary helper functions used through the program.
+
+Implementations.h
+	This file contains the concrete implementation of the algorithms required in the assignment.
+
+#################################################################################################################
+*/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include "Image.h"
+#include "Implementations.h"
+
+int main(int argc, char *argv[])
+{
+    // Read the console arguments
+    // Check for proper syntax
+    if (argc != 6)
+    {
+        std::cout << "Syntax Error - Arguments must be:" << std::endl;
+        std::cout << "programName trainDirectory testDirectory height width channels" << std::endl;
+        std::cout << "*Directory must end with /" << std::endl;
+        return -1;
+    }
+
+	// Parse console arguments
+	const std::string trainDirectory = argv[1];
+	const std::string testDirectory = argv[2];
+	const size_t height = (size_t)atoi(argv[3]);
+	const size_t width = (size_t)atoi(argv[4]);
+	const size_t channels = (size_t)atoi(argv[5]);
+
+    const std::vector<std::string> trainFilenames =
+    {
+        "blanket_1.raw",
+        "blanket_2.raw",
+        "blanket_3.raw",
+        "blanket_4.raw",
+        "blanket_5.raw",
+        "blanket_6.raw",
+        "blanket_7.raw",
+        "blanket_8.raw",
+        "blanket_9.raw",
+        "brick_1.raw",
+        "brick_2.raw",
+        "brick_3.raw",
+        "brick_4.raw",
+        "brick_5.raw",
+        "brick_6.raw",
+        "brick_7.raw",
+        "brick_8.raw",
+        "brick_9.raw",
+        "grass_1.raw",
+        "grass_2.raw",
+        "grass_3.raw",
+        "grass_4.raw",
+        "grass_5.raw",
+        "grass_6.raw",
+        "grass_7.raw",
+        "grass_8.raw",
+        "grass_9.raw",
+        "stones_1.raw",
+        "stones_2.raw",
+        "stones_3.raw",
+        "stones_4.raw",
+        "stones_5.raw",
+        "stones_6.raw",
+        "stones_7.raw",
+        "stones_8.raw",
+        "stones_9.raw",
+    };
+
+    const std::vector<std::string> testFilenames =
+    {
+        "1.raw",
+        "2.raw",
+        "3.raw",
+        "4.raw",
+        "5.raw",
+        "6.raw",
+        "7.raw",
+        "8.raw",
+        "9.raw",
+        "10.raw",
+        "11.raw",
+        "12.raw",
+    };
+
+    // --- Training Dataset
+    const Image<double> trainFeatures = CalculateFeatureVectors(trainDirectory, trainFilenames, height, width, channels);
+
+    // Export to CSV
+    std::ofstream outStreamTrain("train_features.csv", std::ofstream::trunc);
+
+    // Check if file opened successfully
+    if (!outStreamTrain.is_open())
+    {
+        std::cout << "Cannot open file for writing: train_features.csv" << std::endl;
+        return false;
+    }
+
+    // Write to the file: row-by-row, RGB interleaved
+    for (size_t v = 0; v < trainFeatures.height; v++)
+    {
+        if (v < 9)
+            outStreamTrain << "blanket,";
+        else if (v < 18)
+            outStreamTrain << "brick,";
+        else if (v < 27)
+            outStreamTrain << "grass,";
+        else
+            outStreamTrain << "stones,";
+        
+        for (size_t u = 0; u < trainFeatures.width; u++)
+            for (size_t c = 0; c < trainFeatures.channels; c++)
+                outStreamTrain << trainFeatures(v, u, c) << ",";
+        outStreamTrain << std::endl;
+    }
+
+    outStreamTrain.close();
+
+    // Display discriminant power of training
+    CalculateDiscriminantPower(trainFeatures);
+
+    // --- Testing Dataset
+    Image<double> testFeatures = CalculateFeatureVectors(testDirectory, testFilenames, height, width, channels);
+
+    // Export to CSV
+    std::ofstream outStreamTest("test_features.csv", std::ofstream::trunc);
+
+    // Check if file opened successfully
+    if (!outStreamTest.is_open())
+    {
+        std::cout << "Cannot open file for writing: test_features.csv" << std::endl;
+        return false;
+    }
+
+    // Write to the file: row-by-row, RGB interleaved
+    for (size_t v = 0; v < testFeatures.height; v++)
+    {
+        outStreamTest << "unlabeled,";
+
+        for (size_t u = 0; u < testFeatures.width; u++)
+            for (size_t c = 0; c < testFeatures.channels; c++)
+                outStreamTest << testFeatures(v, u, c) << ",";
+        outStreamTest << std::endl;
+    }
+
+    outStreamTest.close();
+
+    std::cout << "Done" << std::endl;
+    return 0;
+}
+
+#pragma once
+
+#ifndef IMPLEMENTATIONS_H
+#define IMPLEMENTATIONS_H
+
+#include <iostream>
+#include <vector>
+
+#include "Image.h"
+#include "Utility.h"
+#include "Filter.h"
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
+// 25 Law Filters that are 5x5 in order: L5, E5, S5, W5, R5
+const std::vector<Filter> lawFilters =
+{
+    // 0: L5 L5.T
+    Filter(5, {1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1}),
+
+    // 1: L5 E5.T
+    Filter(5, {-1, -2, 0, 2, 1, -4, -8, 0, 8, 4, -6, -12, 0, 12, 6, -4, -8, 0, 8, 4, -1, -2, 0, 2, 1}),
+
+    // 2: L5 S5.T
+    Filter(5, {-1, 0, 2, 0, -1, -4, 0, 8, 0, -4, -6, 0, 12, 0, -6, -4, 0, 8, 0, -4, -1, 0, 2, 0, -1}),
+
+    // 3: L5 W5.T
+    Filter(5, {-1, 2, 0, -2, 1, -4, 8, 0, -8, 4, -6, 12, 0, -12, 6, -4, 8, 0, -8, 4, -1, 2, 0, -2, 1}),
+
+    // 4: L5 R5.T
+    Filter(5, {1, -4, 6, -4, 1, 4, -16, 24, -16, 4, 6, -24, 36, -24, 6, 4, -16, 24, -16, 4, 1, -4, 6, -4, 1}),
+
+    // 5: E5 L5.T
+    Filter(5, {-1, -4, -6, -4, -1, -2, -8, -12, -8, -2, 0, 0, 0, 0, 0, 2, 8, 12, 8, 2, 1, 4, 6, 4, 1}),
+
+    // 6: E5 E5.T
+    Filter(5, {1, 2, 0, -2, -1, 2, 4, 0, -4, -2, 0, 0, 0, 0, 0, -2, -4, 0, 4, 2, -1, -2, 0, 2, 1}),
+
+    // 7: E5 S5.T
+    Filter(5, {1, 0, -2, 0, 1, 2, 0, -4, 0, 2, 0, 0, 0, 0, 0, -2, 0, 4, 0, -2, -1, 0, 2, 0, -1}),
+
+    // 8: E5 W5.T
+    Filter(5, {1, -2, 0, 2, -1, 2, -4, 0, 4, -2, 0, 0, 0, 0, 0, -2, 4, 0, -4, 2, -1, 2, 0, -2, 1}),
+
+    // 9: E5 R5.T
+    Filter(5, {-1, 4, -6, 4, -1, -2, 8, -12, 8, -2, 0, 0, 0, 0, 0, 2, -8, 12, -8, 2, 1, -4, 6, -4, 1}),
+
+    // 10: S5 L5.T
+    Filter(5, {-1, -4, -6, -4, -1, 0, 0, 0, 0, 0, 2, 8, 12, 8, 2, 0, 0, 0, 0, 0, -1, -4, -6, -4, -1}),
+
+    // 11: S5 E5.T
+    Filter(5, {1, 2, 0, -2, -1, 0, 0, 0, 0, 0, -2, -4, 0, 4, 2, 0, 0, 0, 0, 0, 1, 2, 0, -2, -1}),
+
+    // 12: S5 S5.T
+    Filter(5, {1, 0, -2, 0, 1, 0, 0, 0, 0, 0, -2, 0, 4, 0, -2, 0, 0, 0, 0, 0, 1, 0, -2, 0, 1}),
+
+    // 13: S5 W5.T
+    Filter(5, {1, -2, 0, 2, -1, 0, 0, 0, 0, 0, -2, 4, 0, -4, 2, 0, 0, 0, 0, 0, 1, -2, 0, 2, -1}),
+
+    // 14: S5 R5.T
+    Filter(5, {-1, 4, -6, 4, -1, 0, 0, 0, 0, 0, 2, -8, 12, -8, 2, 0, 0, 0, 0, 0, -1, 4, -6, 4, -1}),
+
+    // 15: W5 L5.T
+    Filter(5, {-1, -4, -6, -4, -1, 2, 8, 12, 8, 2, 0, 0, 0, 0, 0, -2, -8, -12, -8, -2, 1, 4, 6, 4, 1}),
+
+    // 16: W5 E5.T
+    Filter(5, {1, 2, 0, -2, -1, -2, -4, 0, 4, 2, 0, 0, 0, 0, 0, 2, 4, 0, -4, -2, -1, -2, 0, 2, 1}),
+
+    // 17: W5 S5.T
+    Filter(5, {1, 0, -2, 0, 1, -2, 0, 4, 0, -2, 0, 0, 0, 0, 0, 2, 0, -4, 0, 2, -1, 0, 2, 0, -1}),
+
+    // 18: W5 W5.T
+    Filter(5, {1, -2, 0, 2, -1, -2, 4, 0, -4, 2, 0, 0, 0, 0, 0, 2, -4, 0, 4, -2, -1, 2, 0, -2, 1}),
+
+    // 19: W5 R5.T
+    Filter(5, {-1, 4, -6, 4, -1, 2, -8, 12, -8, 2, 0, 0, 0, 0, 0, -2, 8, -12, 8, -2, 1, -4, 6, -4, 1}),
+
+    // 20: R5 L5.T
+    Filter(5, {1, 4, 6, 4, 1, -4, -16, -24, -16, -4, 6, 24, 36, 24, 6, -4, -16, -24, -16, -4, 1, 4, 6, 4, 1}),
+
+    // 21: R5 E5.T
+    Filter(5, {-1, -2, 0, 2, 1, 4, 8, 0, -8, -4, -6, -12, 0, 12, 6, 4, 8, 0, -8, -4, -1, -2, 0, 2, 1}),
+
+    // 22: R5 S5.T
+    Filter(5, {-1, 0, 2, 0, -1, 4, 0, -8, 0, 4, -6, 0, 12, 0, -6, 4, 0, -8, 0, 4, -1, 0, 2, 0, -1}),
+
+    // 23: R5 W5.T
+    Filter(5, {-1, 2, 0, -2, 1, 4, -8, 0, 8, -4, -6, 12, 0, -12, 6, 4, -8, 0, 8, -4, -1, 2, 0, -2, 1}),
+
+    // 24: R5 R5.T
+    Filter(5, {1, -4, 6, -4, 1, -4, 16, -24, 16, -4, 6, -24, 36, -24, 6, -4, 16, -24, 16, -4, 1, -4, 6, -4, 1}),
+};
+
+// Generate feature vectors for each image (n_samples, n_features) = (36 rows, 25 columns) for training, and (12 rows, 25 columns) for testing
+Image<double> CalculateFeatureVectors(const std::string &directory, const std::vector<std::string> &filenames, const size_t height, const size_t width, const size_t channels)
+{
+    const size_t numFilters = lawFilters.size();
+    const size_t numImages = filenames.size();
+
+    Image<double> featureVectors(numImages, numFilters, 1);
+    for (size_t sampleIndex = 0; sampleIndex < numImages; sampleIndex++)
+    {
+        // Load input image
+        Image<uint8_t> inputImage(height, width, channels);
+        if (!inputImage.ImportRAW(directory + filenames[sampleIndex]))
+            exit(-1);
+
+        std::cout << "Loaded " << filenames[sampleIndex] << std::endl;
+
+        const Image<double> input01Image = inputImage.Cast<double>() / 255.0;
+        for (size_t filterIndex = 0; filterIndex < numFilters; filterIndex++)
+        {
+            const Filter filter = lawFilters[filterIndex];
+            const Image<double> filterResponse = filter.Convolve(input01Image, BoundaryExtension::Reflection);
+            const Image<double> energy = filterResponse.Square();
+            const double mean = energy.Mean();
+            featureVectors(sampleIndex, filterIndex, 0) = mean;
+        }
+    }
+
+    return featureVectors;
+}
+
+// Calculates the discriminant power for each dimension (featureVectors shape: 25 columns, 36 rows, 1 channel)
+void CalculateDiscriminantPower(const Image<double> &featureVectors)
+{
+    constexpr size_t numClasses = 4;
+    constexpr size_t numObserverationsPerClass = 9;
+
+    double minDP = 999999999999;
+    size_t minDPIdx = 0;
+    double maxDP = -minDP;
+    size_t maxDPIdx = 0;
+
+    // For each dimension...
+    std::cout << "Dimension,Discriminant Power,Intraclass,Interclass" << std::endl;
+    for (size_t dim = 0; dim < featureVectors.width; dim++)
+    {
+        // Compute overall average
+        double overallAverage = 0.0;
+        for (size_t imageIdx = 0; imageIdx < featureVectors.height; imageIdx++)
+            overallAverage += featureVectors(imageIdx, dim);
+        overallAverage /= featureVectors.height;
+
+        // Compute the average for each class (we have 4 classes)
+        double classAverages[numClasses] = {0};
+        for (size_t imageIdx = 0; imageIdx < featureVectors.height; imageIdx++)
+        {
+            const size_t classIdx = imageIdx / numObserverationsPerClass;
+            classAverages[classIdx] += featureVectors(imageIdx, dim);
+        }
+        for (size_t i = 0; i < 4; i++)
+            classAverages[i] /= numObserverationsPerClass;
+
+        // Compute the intra/inter-class sum of squares
+        double intraclass = 0.0;
+        double interclass = 0.0;
+        for (size_t imageIdx = 0; imageIdx < featureVectors.height; imageIdx++)
+        {
+            const size_t classIdx = imageIdx / numObserverationsPerClass;
+            intraclass += std::pow(featureVectors(imageIdx, dim) - classAverages[classIdx], 2);
+            interclass += std::pow(classAverages[classIdx] - overallAverage, 2);
+        }
+
+        const double discriminantPower = intraclass / interclass;
+        std::cout << dim << "," << discriminantPower << "," << intraclass << "," << interclass << std::endl;
+
+        if (discriminantPower < minDP)
+        {
+            minDP = discriminantPower;
+            minDPIdx = dim;
+        }
+
+        if (discriminantPower > maxDP)
+        {
+            maxDP = discriminantPower;
+            maxDPIdx = dim;
+        }
+    }
+
+    std::cout << "Min Discriminant Power " << minDPIdx << " with value " << minDP << std::endl;
+    std::cout << "Max Discriminant Power " << maxDPIdx << " with value " << maxDP << std::endl;
+}
+
+// Generates the feature vectors for the specified image by using the 25 Law filters, and computes average energy using provided filter
+// Returns (W, H, 25) matrix
+Image<double> CalculateFeatureVectors(const Image<double> &image, const Filter &filter)
+{
+    const size_t numFilters = lawFilters.size();
+    Image<double> featureVectors(image.height, image.width, numFilters);
+
+    for (size_t filterIndex = 0; filterIndex < numFilters; filterIndex++)
+    {
+        std::cout << "Processing filter " << (filterIndex+1) << " / " << numFilters << "..." << std::endl;
+        
+        // Convolve the law filter with the image
+        const Filter lawFilter = lawFilters[filterIndex];
+        const Image<double> energy = lawFilter.Convolve(image, BoundaryExtension::Reflection).SquareInplace();
+
+        // Convolve with the specified filter to compute average energy and store in the specified dimension
+        filter.ConvolveInplace(energy, 0, featureVectors, filterIndex, BoundaryExtension::Reflection);
+    }
+
+    return featureVectors;
+}
+
+// CLAHE using OpenCV
+Image<uint8_t> CLAHistogramEqualization(const Image<uint8_t> &image, const size_t channel = 0)
+{
+	using namespace cv;
+
+	const Mat mat(static_cast<int32_t>(image.height), static_cast<int32_t>(image.width), CV_8UC1, image.data);
+
+	// Construct CLAHE with the specified parameters
+	const Ptr<CLAHE> clahe = createCLAHE();
+	clahe->setClipLimit(5);
+	clahe->setTilesGridSize(Size(8, 8));
+
+	// Apply CLAHE
+	Mat dst;
+	clahe->apply(mat, dst);
+
+	// Reconstruct image calculated from CLAHE
+	Image<uint8_t> result(image);
+    for (uint32_t v = 0; v < image.height; v++)
+        for (uint32_t u = 0; u < image.width; u++)
+		{
+			uint8_t *pixel = dst.ptr(v, u);
+            result(v, u, 0) = pixel[0];
+		}
+
+	return result;
+}
+
+#endif // IMPLEMENTATIONS_H
+
+#pragma once
+
+#ifndef IMAGE_H
+#define IMAGE_H
+
+#include <string>
+#include <array>
+#include <stdio.h>
+#include <iostream>
+#include <stdlib.h>
+#include <fstream>
+#include "Utility.h"
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+
+// Specifies numerous ways to handle out of bound pixels
+enum BoundaryExtension
+{
+    // Replace the invalid pixels with zeros
+    Zero,
+
+    // Reflect the invalid pixels with respect to the main diagonal line
+    Reflection,
+
+    // Replicate the invalid pixels (symmetric padding)
+    Replication
+};
+
+template <typename T>
+class Image
+{
+private:
+    // Converts 3d to 1d index
+    inline int32_t IndexAt(int32_t row, int32_t column, size_t channel) const
+    {
+        return static_cast<int32_t>((row * channels * width) + (column * channels) + channel);
+    }
+
+    // Converts 1d to 3d index
+    inline void IndexAt3D(const int32_t index, int32_t &row, int32_t &column, int32_t &channel) const
+    {
+        row = index / static_cast<int32_t>(channels * width);
+        column = (index / static_cast<int32_t>(channels)) % static_cast<int32_t>(width);
+        channel = index % static_cast<int32_t>(channels);
+    }
+
+public:
+    // The image data, stored as a 3D array in the format [row][column][channel]
+    T *data;
+
+    // The width of the image in pixels in the image
+    const size_t width;
+    // The height of the image in pixels in the image
+    const size_t height;
+    // The number of channels in the image
+    const size_t channels;
+    // The total number of pixels (width*height) in the image
+    const size_t numPixels;
+
+    // Creates a new image with the specified dimensions
+    Image(const size_t _height, const size_t _width, const size_t _channels)
+        : height(_height), width(_width), channels(_channels), numPixels(_height * _width * channels)
+    {
+        data = new T[numPixels];
+    }
+
+    // Copy constructor
+    Image(const Image<T> &other)
+        : height(other.height), width(other.width), channels(other.channels), numPixels(other.numPixels)
+    {
+        data = new T[numPixels];
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] = other.data[i];
+    }
+
+    // Convert cv::Mat to Image (1 channel)
+    Image(const cv::Mat &mat)
+        : height(mat.rows), width(mat.cols), channels(1), numPixels(mat.rows * mat.cols)
+    {
+        data = new T[numPixels];
+        for (size_t v = 0; v < height; v++)
+            for (size_t u = 0; u < width; u++)
+            {
+                uint8_t val = mat.at<uint8_t>(v, u);
+                (*this)(v, u) = static_cast<T>(val);
+            }
+    }
+
+    // Reads and loads the image in raw format, row-by-row RGB interleaved, from the specified filename
+    Image(const std::string &filename, const size_t _height, const size_t _width, const size_t _channels)
+        : height(_height), width(_width), channels(_channels), numPixels(_height * _width * channels)
+    {
+        data = new uint8_t[numPixels];
+        ImportRAW(filename);
+    }
+
+    // Frees all dynamically allocated memory resources
+    ~Image()
+    {
+        delete[] data;
+    }
+
+    // Exports the image in raw format, row-by-row RGB interleaved, to the specified filename
+    bool ExportRAW(const std::string &filename) const
+    {
+        // Open the file
+        std::ofstream outStream(filename, std::ofstream::binary | std::ofstream::trunc);
+
+        // Check if file opened successfully
+        if (!outStream.is_open())
+        {
+            std::cout << "Cannot open file for writing: " << filename << std::endl;
+            return false;
+        }
+
+        // Write to the file: row-by-row, RGB interleaved
+        outStream.write((char *)data, numPixels);
+        outStream.close();
+
+        return true;
+    }
+
+    // Reads and loads the image in raw format, row-by-row RGB interleaved, from the specified filename
+    bool ImportRAW(const std::string &filename)
+    {
+        // Open the file
+        std::ifstream inStream(filename, std::ios::binary);
+
+        // Check if file opened successfully
+        if (!inStream.is_open())
+        {
+            std::cout << "Cannot open file for reading: " << filename << std::endl;
+            return false;
+        }
+
+        // Read from the file: row-by-row, RGB interleaved
+        inStream.read((char *)data, numPixels);
+        inStream.close();
+
+        return true;
+    }
+
+    // Write the image to the specified file, separated by a comma
+    bool ExportCSV(const std::string &filename, const std::string &delimeter = ",") const
+    {
+        // Open the file
+        std::ofstream outStream(filename, std::ofstream::trunc);
+
+        // Check if file opened successfully
+        if (!outStream.is_open())
+        {
+            std::cout << "Cannot open file for writing: " << filename << std::endl;
+            return false;
+        }
+
+        // Write to the file: row-by-row, RGB interleaved
+        for (size_t v = 0; v < height; v++)
+        {
+            for (size_t u = 0; u < width; u++)
+                for (size_t c = 0; c < channels; c++)
+                    outStream << (int)((*this)(v, u, c)) << delimeter;
+            outStream << std::endl;
+        }
+
+        outStream.close();
+        return true;
+    }
+
+    // Determines if the given location is in a valid position in the image
+    inline bool IsInBounds(const int32_t row, const int32_t column, const size_t channel = 0) const
+    {
+        // True if the pixel is in a valid position in the image, false otherwise
+        return row >= 0 &&
+            row < static_cast<int32_t>(height) &&
+            column >= 0 &&
+            column < static_cast<int32_t>(width) &&
+            channel < channels;
+    }
+
+    // Retrieves the pixel value at the specified location; if out of bounds, will utilize the specified boundary extension method
+    T GetPixelValue(const int32_t row, const int32_t column, const size_t channel = 0, const BoundaryExtension &boundaryExtension = BoundaryExtension::Reflection) const
+    {
+        // If valid position, get the pixel directly
+        if (IsInBounds(row, column, channel))
+        {
+            const int32_t index = IndexAt(row, column, channel);
+            return data[index];
+        }
+        // Otherwise, retrieve the pixel using the specified boundary extension method
+        else
+        {
+            switch (boundaryExtension)
+            {
+            case BoundaryExtension::Replication:
+            {
+                // Compute the replicated/symmetrical coordinate.
+                // If we look at a single row, it should look [ORIGINAL] [REVERSED] [ORIGINAL] [REVERSED] ...
+                // where the first [ORIGINAL] is the the image and the rest are out of bound extensions
+                // Note: There is probably a better more compact version, but I'm only one day from submission, so this'll do!
+                const int32_t w = static_cast<int32_t>(width);
+                const int32_t h = static_cast<int32_t>(height);
+
+                // The final index after applying the replication algorithm
+                int32_t u = column, v = row;
+
+                // Whether the u or v is on a reversed cycle
+                bool uReversed = false, vReversed = false;
+
+                // The amount of extra pixels on either side, starting from 0; i.e. u=-1 gives uExtra=0, -2 gives 1, etc.
+                uint32_t uExtra = 0, vExtra = 0;
+
+                // If out of bounds from the left
+                if (column < 0)
+                {
+                    uExtra = std::abs(column) - 1;
+                    uReversed = (uExtra / w) % 2 == 1;
+
+                    // Compute the u index of the boundary extension
+                    if (uReversed)
+                        u = w - 1 - uExtra % 3;
+                    else
+                        u = uExtra % 3;
+                }
+                // If out of bounds from the right
+                else if (column >= w)
+                {
+                    uExtra = column - w;
+                    uReversed = (uExtra / w) % 2 == 0;
+
+                    // Compute the u index of the boundary extension
+                    if (uReversed)
+                        u = w - 1 - uExtra % 3;
+                    else
+                        u = uExtra % 3;
+                }
+
+                // If out of bounds from the top
+                if (row < 0)
+                {
+                    vExtra = std::abs(row) - 1;
+                    vReversed = (vExtra / h) % 2 == 1;
+
+                    // Compute the v index of the boundary extension
+                    if (vReversed)
+                        v = h - 1 - vExtra % 3;
+                    else
+                        v = vExtra % 3;
+                }
+                // If out of bounds from the bottom
+                else if (row >= h)
+                {
+                    vExtra = column - h;
+                    vReversed = (vExtra / h) % 2 == 0;
+
+                    // Compute the v index of the boundary extension
+                    if (vReversed)
+                        v = h - 1 - vExtra % 3;
+                    else
+                        v = vExtra % 3;
+                }
+
+                const int32_t index = IndexAt(v, u, channel);
+                return data[index];
+            }
+
+            case BoundaryExtension::Reflection:
+            {
+                const int32_t w = static_cast<int32_t>(width);
+                const int32_t h = static_cast<int32_t>(height);
+                int32_t u = column, v = row;
+                if (u < 0)
+                    u = std::abs(u);
+                if (u >= w)
+                    u = 2 * (w - 1) - u;
+                if (v < 0)
+                    v = std::abs(v);
+                if (v >= h)
+                    v = 2 * (h - 1) - v;
+
+                const int32_t index = IndexAt(v, u, channel);
+                return data[index];
+            }
+
+            case BoundaryExtension::Zero:
+            default:
+                return 0;
+            }
+        }
+    }
+
+    // Retrieves the pixel value at the specified location; does not check for out of bounds
+    inline T operator()(const size_t row, const size_t column, const size_t channel = 0) const
+    {
+        const int32_t index = IndexAt(static_cast<int32_t>(row), static_cast<int32_t>(column), channel);
+        return data[index];
+    }
+
+    // Retrieves the pixel value at the specified location; does not check for out of bounds
+    inline T &operator()(const size_t row, const size_t column, const size_t channel = 0)
+    {
+        const int32_t index = IndexAt(static_cast<int32_t>(row), static_cast<int32_t>(column), channel);
+        return data[index];
+    }
+
+    // Sets the entire image across all channels to the specified value
+    void Fill(const T &value)
+    {
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] = value;
+    }
+
+    // Copy the other image
+    void Copy(const Image<T> &other)
+    {
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] = other.data[i];
+    }
+
+    // Elementwise-divide the image by the other image, across all channels separately
+    void ElementwiseDivide(const Image<T> &other)
+    {
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] /= other.data[i];
+    }
+
+    // Prints the content of the image to the console
+    void Print() const
+    {
+        std::cout << "Image (" << height << " x " << width << " x " << channels << ")" << std::endl;
+        for (size_t v = 0; v < height; v++)
+        {
+            for (size_t u = 0; u < width; u++)
+                for (size_t c = 0; c < channels; c++)
+                    std::cout << std::to_string((*this)(v, u, c)) << "\t";
+            std::cout << std::endl;
+        }
+    }
+
+    // Multiplies each pixel value in the image by the specified scale factor
+    Image<T> operator*(const double scaleFactor) const
+    {
+        Image<T> result(*this);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] *= scaleFactor;
+        return result;
+    }
+
+    // Divides each pixel value in the image by the specified divisor
+    Image<T> operator/(const double divisor) const
+    {
+        Image<T> result(*this);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] /= divisor;
+        return result;
+    }
+
+    // Adds each pixel value in the image by the other image
+    Image<T> operator+(const Image &other) const
+    {
+        Image<T> result(*this);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] += other.data[i];
+        return result;
+    }
+
+    // Subtracts each pixel value in the image by the other image
+    Image<T> operator-(const Image &other) const
+    {
+        Image<T> result(*this);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] -= other.data[i];
+        return result;
+    }
+
+    // Inverts the image by multipling by -1.
+    Image<T> operator-() const
+    {
+        return *this * -1;
+    }
+
+    // Calculates the mean value of all the pixel values
+    double Mean() const
+    {
+        double mean = 0.0;
+        for (size_t i = 0; i < numPixels; i++)
+            mean += data[i];
+        return mean / numPixels;
+    }
+
+    // Calculates the sum value of all the pixel values
+    double Sum() const
+    {
+        double sum = 0.0;
+        for (size_t i = 0; i < numPixels; i++)
+            sum += data[i];
+        return sum;
+    }
+
+    // Squares the image
+    Image<T> Square() const
+    {
+        Image<T> result(*this);
+        for (size_t i = 0; i < numPixels; i++)
+            result.data[i] *= result.data[i];
+        return result;
+    }
+
+    // Squares the image in-place
+    Image<T> SquareInplace()
+    {
+        for (size_t i = 0; i < numPixels; i++)
+            data[i] *= data[i];
+        return *this;
+    }
+
+    // Cast to another type
+    template <typename T2>
+    Image<T2> Cast() const
+    {
+        Image<T2> result(height, width, channels);
+        for (size_t i = 0; i < numPixels; i++) 
+            result.data[i] = static_cast<T2>(data[i]);
+        return result;
+    }
+
+    // Returns an OpenCV Mat object that contains the image's data
+    cv::Mat ToMat() const
+    {
+        using namespace cv;
+        if (channels < 1 || channels > 4)
+        {
+            std::cout << "Cannot convert image to OpenCV Mat as it contains too many channels. Shape = (" << height << " x " << width << " x " << channels << ")." << std::endl;
+            exit(-1);
+        }
+
+        const int32_t type = CV_MAKETYPE(CV_8U, static_cast<int32_t>(channels));
+        Mat mat = Mat::zeros(static_cast<int32_t>(height), static_cast<int32_t>(width), type);
+
+        int32_t v, u, c;
+        for (int32_t i = 0; i < numPixels; i++)
+        {
+            // Retrieves the 3D position from the index
+            IndexAt3D(i, v, u, c);
+
+            // OpenCV uses inverted channel order (i.e.e BGR instead of RGB)
+            const int32_t invertedC = static_cast<int32_t>(channels) - c - 1;
+            const uint8_t intensity = Saturate<T>(data[i]);
+            switch(channels)
+            {
+                case 1:
+                    mat.at<uint8_t>(v, u) = intensity;
+                    break;
+                case 2:
+                    mat.at<Vec2b>(v, u)[invertedC] = intensity;
+                    break;
+                case 3:
+                    mat.at<Vec3b>(v, u)[invertedC] = intensity;
+                    break;
+                case 4:
+                    mat.at<Vec4b>(v, u)[invertedC] = intensity;
+                    break;
+            }
+        }
+
+        return mat;
+    }
+};
+
+#endif // IMAGE_H
+
+#pragma once
+
+#ifndef FILTER_H
+#define FILTER_H
+
+#include "Image.h"
+
+class Filter
+{
+public:
+    // The filter data, stored as a 1D array
+    double *data;
+
+    // The length/width of the filter in pixels
+    const size_t size;
+
+    // The total number of pixels in the filter (width * height)
+    const size_t squaredSize;
+
+    // The half length/width of the filter in pixels
+    const int32_t halfSize;
+
+    // Creates a new filter with the specified value with the specified filter size
+    Filter(const size_t size, const double fillValue = 0);
+    // Creates a filter from the given flatten array with the specified square size.
+    Filter(const size_t size, const std::initializer_list<double> values);
+    // Copy constructor
+    Filter(const Filter &other);
+    // Frees all dynamically allocated memory resources
+    ~Filter();
+
+    // Retrieves the pixel value at the specified location; does not check for out of bounds
+    inline double operator()(const size_t row, const size_t column) const;
+
+    // Print the contents of the filter to console
+    void Print() const;
+
+    // Computes the mean of the filter
+    double Mean() const;
+
+    // Applies the filter on the specified center pixel of the given image
+    template <typename T>
+    double Apply(const Image<T> &image, const int32_t v, const int32_t u, const size_t channel = 0, const BoundaryExtension &boundaryExtension = BoundaryExtension::Replication) const
+    {
+        double sum = 0.0;
+        for (size_t i = 0; i < squaredSize; i++)
+        {
+            const size_t filterRow = i / size;
+            const size_t filterColumn = i % size;
+            const int32_t dv = static_cast<int32_t>(filterRow) - halfSize;
+            const int32_t du = static_cast<int32_t>(filterColumn) - halfSize;
+            sum += data[i] * image.GetPixelValue(v + dv, u + du, channel, boundaryExtension);
+        }
+
+        return sum;
+    }
+
+    // Applies the filter on the entire image
+    template <typename T>
+    Image<double> Convolve(const Image<T> &image, const BoundaryExtension &boundaryExtension = BoundaryExtension::Replication) const
+    {
+        Image<double> result(image.width, image.height, image.channels);
+
+        // Convolve across the image
+        for (size_t i = 0; i < result.numPixels; i++)
+        {
+            const size_t v = i / result.width;
+            const size_t u = i % result.width;
+            result(v, u, 0) = Apply(image, static_cast<int32_t>(v), static_cast<int32_t>(u), 0, boundaryExtension);
+        }
+
+        return result;
+    }
+
+    // Applies the filter on the entire image inplace
+    template <typename T>
+    void ConvolveInplace(const Image<T> &src, const size_t srcChannel, Image<T> &dest, const size_t destChannel, const BoundaryExtension &boundaryExtension = BoundaryExtension::Replication) const
+    {
+        // Convolve across the image
+        for (int32_t v = 0; v < src.height; v++)
+            for (int32_t u = 0; u < src.width; u++)
+                dest(v, u, destChannel) = Apply(src, v, u, srcChannel, boundaryExtension);
+    }
+};
+
+#endif // FILTER_H
+
+#pragma once
+
+#ifndef UTILITY_H
+#define UTILITY_H
+
+#include "Image.h"
+#include <cmath>
+
+// Returns the intensity saturated to the range [0, 255]
+template <typename T>
+uint8_t Saturate(const T& intensity)
+{
+    return static_cast<uint8_t>(std::clamp(std::round(static_cast<double>(intensity)), 0.0, 255.0));
+}
+
+#endif // UTILITY_H
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.neighbors import DistanceMetric
+
+label_lookup = {"blanket": 0, "brick": 1, "grass": 2, "stones": 3}
+color_lookup = {0: "blue", 1: "red", 2: "green", 3: "black"}
+
+# Load Train Feature Vectors
+train_x = np.zeros((36, 25))
+train_y = [""] * 36
+train_colors = ["black"] * 36
+train_labels = ["NONE"] * 36
+with open("build/debug/train_features.csv", "r") as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines):
+        vals = line.split(",")[:-1]
+        train_x[i, :] = vals[1:]
+        train_y[i] = vals[0]
+        train_colors[i] = color_lookup[label_lookup[vals[0]]]
+        train_labels[i] = vals[0] + "_" + str(1 + (i % 9))
+        
+# Load Test Feature Vectors    
+test_x = np.zeros((12, 25))
+test_labels = ["NONE"] * 12
+with open("build/debug/test_features.csv", "r") as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines):
+        vals = line.split(",")[:-1]
+        test_x[i, :] = vals[1:]
+        test_labels[i] = str(i+1)
+
+# PCA
+pca = PCA(n_components=3)
+pca.fit(train_x)
+train_x_pca = pca.transform(train_x)
+test_x_pca = pca.transform(test_x)
+
+# Plot how well PCA compressed the dataset
+def calculate_pca_reconstruction_accuracy(covariance_matrix, label=""):
+    pca_reconstruction_acc = 0
+    for idx, eigenvector in enumerate(pca.components_):
+        eigenvalue = np.dot(eigenvector.T, np.dot(covariance_matrix, eigenvector))
+        print(f"{label}'s eigenvalue #{idx+1}", eigenvalue)
+        pca_reconstruction_acc += eigenvalue
+    trace = np.trace(covariance_matrix)
+    print(f"{label}'s trace", trace)
+    pca_reconstruction_acc /= trace
+    print(f"{label}'s pca_reconstruction_acc", pca_reconstruction_acc)
+calculate_pca_reconstruction_accuracy(np.cov(train_x.T), "train")
+calculate_pca_reconstruction_accuracy(np.cov(test_x.T), "test")
+
+# Train PCA Plot
+fig = plt.figure()
+ax = plt.axes(projection="3d")
+ax.scatter(train_x_pca[:9, 0], train_x_pca[:9, 1], train_x_pca[:9, 2], c=train_colors[:9], marker="x", label="Blanket")
+ax.scatter(train_x_pca[9:18, 0], train_x_pca[9:18, 1], train_x_pca[9:18, 2], c=train_colors[9:18], marker="o", label="Brick")
+ax.scatter(train_x_pca[18:27, 0], train_x_pca[18:27, 1], train_x_pca[18:27, 2], c=train_colors[18:27], marker="*", label="Grass")
+ax.scatter(train_x_pca[27:, 0], train_x_pca[27:, 1], train_x_pca[27:, 2], c=train_colors[27:], marker="s", label="Stones")
+# for i, label in enumerate(train_labels):
+#     ax.text(train_x_pca[i, 0], train_x_pca[i, 1], train_x_pca[i, 2], label, size=8, zorder=1, color="k") 
+ax.set_title("PCA on Train Dataset")
+ax.set_xlabel("$1^{st}$ PC")
+ax.set_ylabel("$2^{nd}$ PC")
+ax.set_zlabel("$3^{rd}$ PC")
+ax.legend()
+plt.show()
+
+# Test PCA Plot
+fig = plt.figure()
+ax = plt.axes(projection="3d")
+ax.scatter(test_x_pca[:, 0], test_x_pca[:, 1], test_x_pca[:, 2], marker="x")
+for i, label in enumerate(test_labels):
+    ax.text(test_x_pca[i, 0], test_x_pca[i, 1], test_x_pca[i, 2], label, size=8, zorder=1, color="k") 
+ax.set_title("PCA on Test Dataset")
+ax.set_xlabel("$1^{st}$ PC")
+ax.set_ylabel("$2^{nd}$ PC")
+ax.set_zlabel("$3^{rd}$ PC")
+plt.show()
+
+# Test Classification using Mahalanobis distance
+mahalanobis = DistanceMetric.get_metric("mahalanobis", V=np.cov(train_x_pca.T))
+mahalanobis_matrix = mahalanobis.pairwise(test_x_pca, train_x_pca)
+indices = np.argmin(mahalanobis_matrix, axis=1)
+classification = [train_y[int(i)] for i in indices]
+correct_classification = ["grass", "blanket", "blanket", "stones", "stones", "grass", "brick", "stones", "brick", "brick", "blanket", "grass"]
+
+for idx, (output, correct_output) in enumerate(zip(classification, correct_classification)):
+    if output == correct_output:
+        print(f"{idx+1}. {output}")
+    else:
+        print(f"{idx+1}. {output}\tWrong: {correct_output}")
+
+matching_classifications = len([i for i, j in zip(classification, correct_classification) if i == j])
+print(f"Accuracy: {matching_classifications}/{len(classification)}")
+
+"""
+1. blanket	Wrong: grass
+2. blanket
+3. blanket
+4. stones
+5. stones
+6. grass
+7. brick
+8. brick	Wrong: stones
+9. brick
+10. brick
+11. stones	Wrong: blanket
+12. grass
+Accuracy: 9/12
+"""
+
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from matplotlib import pyplot as plt
+
+# parses the descriptor file into a numpy array
+def parse_descriptor_file(filename):
+    with open(f"{filename}_descriptors.txt", "r") as f:
+        lines = f.readlines()
+        
+        # 4th line has #rows
+        rows = [int(s) for s in lines[3].split() if s.isdigit()][0]
+        
+        # 5th line has #cols
+        cols = [int(s) for s in lines[4].split() if s.isdigit()][0]
+        
+        # 6th line onwards has the data 
+        data = ""
+        for line in lines[6:]:
+            data += line
+            
+        # Parse the [...] data to float array
+        openBracket = data.find("[")
+        closeBracket = data.find("]")
+        data = data[openBracket+1:closeBracket].strip()
+        data = list(map(float, data.split(",")))
+
+        values = np.array(data, dtype=np.float32).reshape(rows, cols)
+        print(f"Loaded {filename} {rows} descriptors")
+        return values
+
+# Computes the normalized histogram
+def calc_hist(bow_features):
+    counts = np.bincount(bow_features)
+    print(counts)
+    return counts / np.sum(counts)
+
+# Get the similarity via histogram intersection method
+def calc_similarity(hist1, hist2):
+    min_hist = np.minimum(hist1, hist2) # elementwise min
+    max_hist = np.maximum(hist1, hist2) # elementwise max
+    return min_hist.sum() / max_hist.sum()
+
+# plots the histograms into one figure
+def plot_hists(filename, hists, labels, colors, title, xlabel, ylabel):
+    fig = plt.figure()
+    xvalues = range(1, 9)
+    bar_width = 0.25
+       
+    last_r = np.arange(len(hists[0]))
+    for (hist, label, color) in zip(hists, labels, colors):
+        plt.bar(last_r, hist, color=color, width=bar_width, edgecolor='white', label=label)
+        last_r = [x + bar_width for x in last_r]
+    
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks([r + bar_width for r in range(len(hist))], xvalues)
+    
+    plt.legend()
+    plt.savefig(filename)
+    # plt.show()
+
+cat_1_descriptor = parse_descriptor_file("build/debug/cat_1")
+cat_2_descriptor = parse_descriptor_file("build/debug/cat_2")
+dog_1_descriptor = parse_descriptor_file("build/debug/dog_1")
+cat_dog_descriptor = parse_descriptor_file("build/debug/cat_dog")
+dog_2_descriptor = parse_descriptor_file("build/debug/dog_2")
+
+for n_components in [-1, 20]:
+    print("-"*100)
+    print("Number of components", n_components)
+    if n_components == -1: # no pca
+        cat_1_descriptor_pca = cat_1_descriptor
+        cat_2_descriptor_pca = cat_2_descriptor
+        dog_1_descriptor_pca = dog_1_descriptor
+        cat_dog_descriptor_pca = cat_dog_descriptor
+        dog_2_descriptor_pca = dog_2_descriptor
+    else:
+        cat_1_descriptor_pca = PCA(n_components=n_components).fit_transform(cat_1_descriptor)
+        cat_2_descriptor_pca = PCA(n_components=n_components).fit_transform(cat_2_descriptor)
+        dog_1_descriptor_pca = PCA(n_components=n_components).fit_transform(dog_1_descriptor)
+        cat_dog_descriptor_pca = PCA(n_components=n_components).fit_transform(cat_dog_descriptor)
+        dog_2_descriptor_pca = PCA(n_components=n_components).fit_transform(dog_2_descriptor)
+        
+    x_train = np.vstack([cat_1_descriptor_pca, cat_2_descriptor_pca, dog_1_descriptor_pca, cat_dog_descriptor_pca])
+    kmeans = KMeans(n_clusters=8, init="k-means++").fit(x_train)
+
+    cat_1_bow = kmeans.predict(cat_1_descriptor_pca)
+    cat_1_hist = calc_hist(cat_1_bow)
+
+    dog_1_bow = kmeans.predict(dog_1_descriptor_pca)
+    dog_1_hist = calc_hist(dog_1_bow)
+
+    dog_2_bow = kmeans.predict(dog_2_descriptor_pca)
+    dog_2_hist = calc_hist(dog_2_bow)
+
+    print(f"cat_1 and dog_2 similarity = {calc_similarity(cat_1_hist, dog_2_hist):.2f}")
+    print(f"dog_1 and dog_2 similarity = {calc_similarity(dog_1_hist, dog_2_hist):.2f}")
+    plot_hists(
+        filename=f"hists_{n_components}.png",
+        hists=[cat_1_hist, dog_1_hist, dog_2_hist],
+        labels=["cat_1", "dog_1", "dog_2"],
+        colors=["red", "green", "blue"],
+        title="Normalized Histogram for each Image after K-means",
+        xlabel="Codeword",
+        ylabel="Normalized Count")
+		
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from matplotlib import pyplot as plt
+from sklearn.mixture import GaussianMixture
+
+# Specify the color for each cluster
+COLORS = {
+    0: np.array([107, 143, 159], dtype=int),
+    1: np.array([114, 99, 107], dtype=int),
+    2: np.array([175, 128, 74], dtype=int),
+    3: np.array([167, 57, 32], dtype=int),
+    4: np.array([144, 147, 104], dtype=int),
+    5: np.array([157, 189, 204], dtype=int),
+}
+
+def cluster_to_color(cluster):
+    return COLORS[cluster]
+
+output_lines = []
+
+for window_size in ["17", "35", "47", "65", "79", "93"]:
+    filename = f"D:/Programming/Github/EE569_HW4/build/Debug/Mosaic_b_features_{window_size}.csv"
+    print("-"*50, filename, "-"*50)
+    output_lines.append("-"*50 + filename + "-"*50)
+    
+    # Load feature vectors
+    with open(filename, "r") as f:
+        lines = f.readlines()
+        width, height, channels = tuple(map(int, lines[0].split(",")))
+        features = np.zeros((height * width, channels))
+        for i, line in enumerate(lines[1:]):
+            vals = tuple(map(float, line.split(",")[:-1]))
+            features[i, :] = np.asarray(vals)
+
+    # Normalize features by L5L5T
+    # features /= features[:, 0].reshape(-1, 1)
+
+    # Discard L5L5T dimension
+    features = np.delete(features, obj=0, axis=1) # drop the 1st column
+
+    for pca_comp in [3, 6, 12, 18, 24]:
+        ########################## PCA ##########################
+        if pca_comp == 24:
+            features_pca = features
+        else:
+            pca = PCA(n_components=pca_comp)
+            pca.fit(features)
+            features_pca = pca.transform(features)
+
+        ########################## K-Means  ##########################
+        print("PCA Num Components", pca_comp)
+        kmeans = KMeans(n_clusters=6).fit(features_pca)
+
+        counts = np.bincount(kmeans.labels_)
+        print("K-Means Cluster counts", sorted(counts))
+
+        predictions = np.array(kmeans.labels_).reshape(height, width)
+        segmentation_image = np.zeros((height, width, 3), dtype=np.uint8)
+        for h in range(height):
+            for w in range(width):
+                segmentation_image[h, w, :] = cluster_to_color(predictions[h, w])
+
+        plt.imsave(filename.replace(".csv", f"_kmeans_pca{pca_comp}.png"), segmentation_image)
+        
+        ########################## K-Means  ##########################
+        gmm = GaussianMixture(n_components=6).fit_predict(features_pca)
+
+        counts = np.bincount(gmm)
+        print("GMM Cluster counts", sorted(counts))
+        print()
+
+        predictions = np.array(gmm).reshape(height, width)
+        segmentation_image = np.zeros((height, width, 3), dtype=np.uint8)
+        for h in range(height):
+            for w in range(width):
+                segmentation_image[h, w, :] = cluster_to_color(predictions[h, w])
+
+        plt.imsave(filename.replace(".csv", f"_gmm_pca{pca_comp}.png"), segmentation_image)
+		
+from msilib.schema import File
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC, LinearSVC
+from sklearn.model_selection import GridSearchCV
+from matplotlib import pyplot as plt
+
+# Specify the color for each cluster
+COLORS = {
+    0: np.array([107, 143, 159], dtype=int),
+    1: np.array([114, 99, 107], dtype=int),
+    2: np.array([175, 128, 74], dtype=int),
+    3: np.array([167, 57, 32], dtype=int),
+    4: np.array([144, 147, 104], dtype=int),
+    5: np.array([157, 189, 204], dtype=int),
+}
+
+def cluster_to_color(cluster):
+    return COLORS[cluster]
+
+for window_size in ["17", "35", "47", "65", "79", "93"]:
+    filename = f"D:/Programming/Github/EE569_HW4/build/Debug/Mosaic_a_features_{window_size}.csv"
+    print("-"*50, filename, "-"*50)
+
+    # Load feature vectors
+    with open(filename, "r") as f:
+        lines = f.readlines()
+        width, height, channels = tuple(map(int, lines[0].split(",")))
+        features = np.zeros((height * width, channels))
+        for i, line in enumerate(lines[1:]):
+            vals = tuple(map(float, line.split(",")[:-1]))
+            features[i, :] = np.asarray(vals)
+
+    # Normalize features by L5L5T
+    features /= features[:, 0].reshape(-1, 1)
+
+    # Discard L5L5T dimension
+    features = np.delete(features, obj=0, axis=1) # drop the 1st column
+
+    ########################## K-Means on 24D ##########################
+    kmeans = KMeans(n_clusters=6).fit(features)
+
+    counts = np.bincount(kmeans.labels_)
+    print("K-Means Cluster counts", sorted(counts))
+    print()
+
+    predictions = np.array(kmeans.labels_).reshape(height, width)
+    segmentation_image = np.zeros((height, width, 3), dtype=np.uint8)
+    for h in range(height):
+        for w in range(width):
+            segmentation_image[h, w, :] = cluster_to_color(predictions[h, w])
+
+    plt.imsave(filename.replace(".csv", "_kmeans.png"), segmentation_image)
+    plt.show()
+	
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC, LinearSVC
+from sklearn.model_selection import GridSearchCV
+
+label_lookup = {"blanket": 0, "brick": 1, "grass": 2, "stones": 3}
+inv_label_lookup = {v:k for k,v in label_lookup.items()}
+color_lookup = {0: "blue", 1: "red", 2: "green", 3: "black"}
+
+# Load Train Feature Vectors
+train_x = np.zeros((36, 25))
+train_y = [0] * 36 # index of label (0=blanket, ...)
+train_labels = [""] * 36 # the label (word) of each instance (i.e. blanket)
+with open("build/debug/train_features.csv", "r") as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines):
+        vals = line.split(",")[:-1]
+        train_x[i, :] = vals[1:]
+        train_y[i] = label_lookup[vals[0]]
+        train_labels[i] = vals[0]
+        
+# Load Test Feature Vectors    
+test_x = np.zeros((12, 25))
+test_y = [0] * 12 # index of label (0=blanket, ...)
+test_labels = ["grass", "blanket", "blanket", "stones", "stones", "grass", "brick", "stones", "brick", "brick", "blanket", "grass"]
+with open("build/debug/test_features.csv", "r") as f:
+    lines = f.readlines()
+    for i, line in enumerate(lines):
+        vals = line.split(",")[:-1]
+        test_x[i, :] = vals[1:]
+        test_y[i] = label_lookup[test_labels[i]]
+
+# Normalize the 25D
+scaler = MinMaxScaler()
+scaler.fit(train_x)
+train_x_scaled = scaler.transform(train_x)
+test_x_scaled = scaler.transform(test_x)
+
+# PCA
+pca = PCA(n_components=3)
+pca.fit(train_x)
+train_x_pca = pca.transform(train_x)
+test_x_pca = pca.transform(test_x)
+
+pca_scaled = PCA(n_components=3)
+pca_scaled.fit(train_x_scaled)
+train_x_pca_scaled = pca_scaled.transform(train_x_scaled)
+test_x_pca_scaled = pca_scaled.transform(test_x_scaled)
+
+# returns the accuracy%, correct matching, total samples
+def get_accuracy(pred, true):
+    matching_classifications = len([i for i, j in zip(pred, true) if i == j])
+    accuracy = matching_classifications / len(true)
+    return accuracy, matching_classifications
+
+########################## K-Means on 25D ##########################
+print("-"*50, "Kmeans on 25D", "-"*50)
+kmeans25 = KMeans(n_clusters=4, random_state=2150, init="k-means++").fit(train_x_scaled)
+
+# Majority voting on the clusters using the training dataset
+kmeans25_train_prediction = kmeans25.predict(train_x_scaled)
+kmeans25_clusterlabel = ["NONE"] * 4
+for clusterIdx in range(4):
+    votes = np.zeros(4) # vote count for each class in this cluster
+    for i, pred in enumerate(kmeans25_train_prediction):
+        if pred == clusterIdx:
+            predictedClass = train_y[i]
+            votes[predictedClass] += 1
+    # skip empty clusters
+    if votes.sum() == 0:
+        continue
+    clusterClass = votes.argmax()
+    clusterLabel = inv_label_lookup[clusterClass]
+    clusterPurity = votes.max() / votes.sum()
+    kmeans25_clusterlabel[clusterIdx] = clusterLabel
+    print("cluster", clusterIdx, "votes", votes, "class", clusterClass, "label", clusterLabel, "purity", clusterPurity)
+
+# Label the testing dataset using the kmeans clusters
+kmeans25_test_prediction = kmeans25.predict(test_x_scaled)
+kmeans25_classification = [kmeans25_clusterlabel[i] for i in kmeans25_test_prediction]
+print("Kmeans25", kmeans25_classification)
+
+# Compute testing accuracy and error rate
+accuracy, matching_classifications = get_accuracy(kmeans25_classification, test_labels)
+print(f"Accuracy: {matching_classifications} / {len(test_labels)} = {accuracy}")
+print(f"Error Rate: {len(test_labels) - matching_classifications} / {len(test_labels)} = {1.0 - accuracy}")
+print()
+
+
+########################## K-Means on 3D ##########################
+print("-"*50, "Kmeans on 3D", "-"*50)
+kmeans3 = KMeans(n_clusters=4, random_state=12809, init="k-means++").fit(train_x_pca_scaled)
+
+# Majority voting on the clusters using the training dataset
+kmeans3_train_prediction = kmeans3.predict(train_x_pca_scaled)
+kmeans3_clusterlabel = ["NONE"] * 4
+for clusterIdx in range(4):
+    votes = np.zeros(4) # vote count for each class in this cluster
+    for i, pred in enumerate(kmeans3_train_prediction):
+        if pred == clusterIdx:
+            predictedClass = train_y[i]
+            votes[predictedClass] += 1
+    # skip empty clusters
+    if votes.sum() == 0:
+        continue
+    clusterClass = votes.argmax()
+    clusterLabel = inv_label_lookup[clusterClass]
+    clusterPurity = votes.max() / votes.sum()
+    kmeans3_clusterlabel[clusterIdx] = clusterLabel
+    print("cluster", clusterIdx, "votes", votes, "class", clusterClass, "label", clusterLabel, "purity", clusterPurity)
+
+# Label the testing dataset using the kmeans clusters
+kmeans3_test_prediction = kmeans3.predict(test_x_pca_scaled)
+kmeans3_classification = [kmeans3_clusterlabel[i] for i in kmeans3_test_prediction]
+print("Kmeans3", kmeans3_classification)
+
+# Compute testing accuracy and error rate
+accuracy, matching_classifications = get_accuracy(kmeans3_classification, test_labels)
+print(f"Accuracy: {matching_classifications} / {len(test_labels)} = {accuracy}")
+print(f"Error Rate: {len(test_labels) - matching_classifications} / {len(test_labels)} = {1.0 - accuracy}")
+print()
+
+
+########################## Random Forest on 3D ##########################
+print("-"*50, "Random Forest on 3D", "-"*50)
+
+rf = RandomForestClassifier(max_depth=3, random_state=13)
+rf.fit(train_x_pca, train_y)
+
+rf_train_pred = rf.predict(train_x_pca)
+accuracy, matching_classifications = get_accuracy(rf_train_pred, train_y)
+print(f"RF Train Accuracy: {matching_classifications} / {len(train_y)} = {accuracy}")
+print("RF Train Predictions: ", rf_train_pred)
+
+rf_test_pred = rf.predict(test_x_pca)
+accuracy, matching_classifications = get_accuracy(rf_test_pred, test_y)
+print(f"RF Test Accuracy: {matching_classifications} / {len(test_y)} = {accuracy}")
+print("RF Test Predictions: ", rf_test_pred)
+print("RF Classifications", [inv_label_lookup[i] for i in rf_test_pred])
+print()
+
+########################## SVM on 3D ##########################
+print("-"*50, "SVM on 3D", "-"*50)
+
+svm = SVC(random_state=1337, C=100)
+svm.fit(train_x_pca, train_y)
+
+svm_train_pred = svm.predict(train_x_pca)
+accuracy, matching_classifications = get_accuracy(svm_train_pred, train_y)
+print(f"SVM Train Accuracy: {matching_classifications} / {len(train_y)} = {accuracy}")
+print("SVM Train Predictions: ", svm_train_pred)
+
+svm_test_pred = svm.predict(test_x_pca)
+accuracy, matching_classifications = get_accuracy(svm_test_pred, test_y)
+print(f"SVM Test Accuracy: {matching_classifications} / {len(test_y)} = {accuracy}")
+print("SVM Test Predictions: ", svm_test_pred)
+print("SVM Classifications", [inv_label_lookup[i] for i in svm_test_pred])
+print()
